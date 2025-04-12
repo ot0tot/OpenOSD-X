@@ -1,0 +1,47 @@
+# STM32CubeIDE general
+*.launch
+*.log
+*.bin
+*.elf
+*.hex
+*.map
+*.o
+*.d
+*.list
+*.obj
+*.pyc
+*.pyo
+*.out
+*.dep
+*.a
+*.su
+*.bak
+
+# Core build folders
+/Debug/
+/Release/
+/build/
+/Build/
+
+# IDE specific settings (optional: keep these if you want consistent settings)
+/.settings/
+/.cproject
+.project
+
+# Backup files
+*~ 
+# Mac OS
+.DS_Store
+# Windows
+Thumbs.db
+desktop.ini
+
+# Python virtual environment (if used)
+venv/
+.env/
+
+# Other
+*.swp
+
+.project
+.cproject
