@@ -1,6 +1,6 @@
 ################################################################################
 # Automatically-generated file. Do not edit!
-# Toolchain: GNU Tools for STM32 (12.3.rel1)
+# Toolchain: GNU Tools for STM32 (13.3.rel1)
 ################################################################################
 
 -include ../makefile.init
@@ -34,37 +34,37 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := openosd-x
+BUILD_ARTIFACT_NAME := OpenOSD-WeAct
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-openosd-x.elf \
+OpenOSD-WeAct.elf \
 
 MAP_FILES += \
-openosd-x.map \
+OpenOSD-WeAct.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-openosd-x.list \
+OpenOSD-WeAct.list \
 
 OBJCOPY_HEX += \
-openosd-x.hex \
+OpenOSD-WeAct.hex \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: openosd-x.elf secondary-outputs
+main-build: OpenOSD-WeAct.elf secondary-outputs
 
 # Tool invocations
-openosd-x.elf openosd-x.map: $(OBJS) $(USER_OBJS) C:\USER\stm32g4\OpAmpTest\OpenOSD-X\STM32G431KBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "openosd-x.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\USER\stm32g4\OpAmpTest\OpenOSD-X\STM32G431KBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="openosd-x.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+OpenOSD-WeAct.elf OpenOSD-WeAct.map: $(OBJS) $(USER_OBJS) C:\Users\B650\Downloads\openosd-x_temp\OpenOSD-WeAct\STM32G431CBUX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "OpenOSD-WeAct.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\B650\Downloads\openosd-x_temp\OpenOSD-WeAct\STM32G431CBUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="OpenOSD-WeAct.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -73,19 +73,19 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-openosd-x.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "openosd-x.list"
+OpenOSD-WeAct.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "OpenOSD-WeAct.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-openosd-x.hex: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objcopy  -O ihex $(EXECUTABLES) "openosd-x.hex"
+OpenOSD-WeAct.hex: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objcopy  -O ihex $(EXECUTABLES) "OpenOSD-WeAct.hex"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) default.size.stdout openosd-x.elf openosd-x.hex openosd-x.list openosd-x.map
+	-$(RM) OpenOSD-WeAct.elf OpenOSD-WeAct.hex OpenOSD-WeAct.list OpenOSD-WeAct.map default.size.stdout
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_HEX)
