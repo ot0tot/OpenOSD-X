@@ -66,3 +66,13 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32g4xx
     # Add defined libraries
 )
+
+# Generate hex and bin files
+set(HEX_FILE ${PROJECT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.hex)
+set(BIN_FILE ${PROJECT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${PROJECT_NAME}> ${HEX_FILE}
+        COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${PROJECT_NAME}> ${BIN_FILE}
+        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${PROJECT_NAME}>)
+

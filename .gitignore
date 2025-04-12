@@ -45,3 +45,7 @@ venv/
 
 .project
 .cproject
+
+.idea/
+.build/
+cmake-build-*/
