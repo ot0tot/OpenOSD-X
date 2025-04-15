@@ -24,9 +24,11 @@
 /Build/
 
 # IDE specific settings (optional: keep these if you want consistent settings)
-/.settings/
-/.cproject
-.project
+/Src/.settings/
+/Src/.cproject
+/Src/.project
+/Src/.mxproject
+/Src/*.ioc
 
 # Backup files
 *~ 
@@ -42,9 +44,6 @@ venv/
 
 # Other
 *.swp
-
-.project
-.cproject
 
 .idea/
 .build/
