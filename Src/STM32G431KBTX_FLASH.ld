@@ -45,9 +45,7 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 32K
-/*  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 128K	*/
-  FLASH         (rx) : ORIGIN = 0x8000000,   LENGTH = 96K
-  FLASH_FONT    (r)  : ORIGIN = 0x8018000,   LENGTH = 32K
+  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 128K
   CCMRAM (xrw)  : ORIGIN = 0x10000000, LENGTH = 8K
 }
 
@@ -74,14 +72,6 @@ SECTIONS
     _eccmram = .;        /* define a global symbols at ccmram end */
   } >CCMRAM AT> FLASH
   /*--- End of CCMRAM linker section definition ---*/
-
-/* Font */
-  .font :  {
-    . = ALIGN(4);
-    _font = .;        /* define a global symbols at start */
-    *(.font)
-  } >FLASH_FONT
-/* Font */
 
   /* The program code and other data into "FLASH" Rom type memory */
   .text :
