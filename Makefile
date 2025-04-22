@@ -10,6 +10,8 @@ BUILD_DIR = build
 
 # C sources
 C_SOURCES_HAL_G4xx =  \
+Src/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc.c \
+Src/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc_ex.c \
 Src/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_ll_adc.c \
 Src/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal.c \
 Src/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_rcc.c \

@@ -20,6 +20,9 @@ target_include_directories(stm32g4xx INTERFACE
 )
 
 target_sources(stm32g4xx INTERFACE
+    ../../Src/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc.c
+    ../../Src/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc_ex.c
+    ../../Src/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_ll_adc.c
     ../../Src/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal.c
     ../../Src/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_rcc.c
     ../../Src/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_rcc_ex.c
