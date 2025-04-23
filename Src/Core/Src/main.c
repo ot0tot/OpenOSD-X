@@ -727,7 +727,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 //    uint32_t uwIC2Value =  htim->Instance->CCR2;
 //    SEGGER_RTT_printf(0, "%d %d\n", uwIC1Value/17, uwIC2Value/17);
 
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+//    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
     if ( vscount >= CANVAS_V_OFFSET && vscount < CANVAS_V ){
 
         LL_TIM_DisableCounter(TIM1);
@@ -755,7 +755,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
     if ((vscount >= CANVAS_V_OFFSET-1)  && vscount < CANVAS_V ){
         SetLine(&dataBuffer[(vcanvas_count) & 0x1][CANVAS_H_OFFSET], &canvas[canvas_active][(vcanvas_count/18)*COLUMN_SIZE], (vcanvas_count) % 18);
     }
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+//    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
 
 
     uint32_t uwIC1Value =  htim->Instance->CCR1;
@@ -1524,14 +1524,21 @@ static void MX_TIM2_Init(void)
     Error_Handler();
   }
   sSlaveConfig.SlaveMode = TIM_SLAVEMODE_RESET;
-  sSlaveConfig.InputTrigger = TIM_TS_TI1FP1;
-  sSlaveConfig.TriggerPolarity = TIM_INPUTCHANNELPOLARITY_FALLING;
-  sSlaveConfig.TriggerPrescaler = TIM_ICPSC_DIV1;
+  sSlaveConfig.InputTrigger = TIM_TS_ETRF;
+  sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_NONINVERTED;
+  sSlaveConfig.TriggerPrescaler = TIM_TRIGGERPRESCALER_DIV1;
   sSlaveConfig.TriggerFilter = 0;
   if (HAL_TIM_SlaveConfigSynchro(&htim2, &sSlaveConfig) != HAL_OK)
   {
     Error_Handler();
   }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  HAL_TIMEx_RemapConfig(&htim2, TIM_TIM2_ETR_COMP2);
   sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_FALLING;
   sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
   sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
@@ -1540,15 +1547,16 @@ static void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
-  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
-  sConfigIC.ICSelection = TIM_ICSELECTION_INDIRECTTI;
+  if (HAL_TIMEx_TISelection(&htim2, TIM_TIM2_TI1_COMP2, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
   if (HAL_TIM_IC_ConfigChannel(&htim2, &sConfigIC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
   }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_TISelection(&htim2, TIM_TIM2_TI2_COMP1, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
   }
