@@ -128,7 +128,7 @@ typedef enum {
 }STATE;
 
 #define CANVAS_H_R  360
-#define CANVAS_H_OFFSET   72       // 4pix(1byte) aligne
+#define CANVAS_H_OFFSET   48       // 4pix(1byte) aligne
 #define CANVAS_H   (CANVAS_H_R + CANVAS_H_OFFSET)
 //#define CANVAS_V   234
 #define CANVAS_V_OFFSET   19
@@ -727,7 +727,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 //    uint32_t uwIC2Value =  htim->Instance->CCR2;
 //    SEGGER_RTT_printf(0, "%d %d\n", uwIC1Value/17, uwIC2Value/17);
 
-//    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
     if ( vscount >= CANVAS_V_OFFSET && vscount < CANVAS_V ){
 
         LL_TIM_DisableCounter(TIM1);
@@ -755,7 +755,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
     if ((vscount >= CANVAS_V_OFFSET-1)  && vscount < CANVAS_V ){
         SetLine(&dataBuffer[(vcanvas_count) & 0x1][CANVAS_H_OFFSET], &canvas[canvas_active][(vcanvas_count/18)*COLUMN_SIZE], (vcanvas_count) % 18);
     }
-//    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
 
 
     uint32_t uwIC1Value =  htim->Instance->CCR1;
@@ -1221,7 +1221,7 @@ static void MX_COMP2_Init(void)
   hcomp2.Init.OutputPol = COMP_OUTPUTPOL_NONINVERTED;
   hcomp2.Init.Hysteresis = COMP_HYSTERESIS_70MV;
   hcomp2.Init.BlankingSrce = COMP_BLANKINGSRC_NONE;
-  hcomp2.Init.TriggerMode = COMP_TRIGGERMODE_NONE;
+  hcomp2.Init.TriggerMode = COMP_TRIGGERMODE_EVENT_RISING;
   if (HAL_COMP_Init(&hcomp2) != HAL_OK)
   {
     Error_Handler();
@@ -1450,6 +1450,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE END TIM1_Init 0 */
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_SlaveConfigTypeDef sSlaveConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
   /* USER CODE BEGIN TIM1_Init 1 */
@@ -1471,6 +1472,15 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
+  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_COMBINED_GATEDRESET;
+  sSlaveConfig.InputTrigger = TIM_TS_ETRF;
+  sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_NONINVERTED;
+  sSlaveConfig.TriggerPrescaler = TIM_TRIGGERPRESCALER_DIV1;
+  sSlaveConfig.TriggerFilter = 0;
+  if (HAL_TIM_SlaveConfigSynchro(&htim1, &sSlaveConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
@@ -1478,6 +1488,7 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
+  HAL_TIMEx_RemapConfig(&htim1, TIM_TIM1_ETR_COMP2);
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
