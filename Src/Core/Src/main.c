@@ -956,7 +956,7 @@ int main(void)
 
     HAL_DAC_MspInit(&hdac3);
     HAL_DAC_Start(&hdac3, DAC_CHANNEL_2);
-    HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_2, DAC_ALIGN_12B_R, (0xfff*71)/3300);    // 71mV
+    HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_2, DAC_ALIGN_12B_R, (0xfff*178)/3300);    // -20IRE + 70mv/2
 
     HAL_TIM_Base_MspInit(&htim1);
 
@@ -1219,7 +1219,7 @@ static void MX_COMP2_Init(void)
   hcomp2.Init.InputPlus = COMP_INPUT_PLUS_IO2;
   hcomp2.Init.InputMinus = COMP_INPUT_MINUS_DAC3_CH2;
   hcomp2.Init.OutputPol = COMP_OUTPUTPOL_NONINVERTED;
-  hcomp2.Init.Hysteresis = COMP_HYSTERESIS_NONE;
+  hcomp2.Init.Hysteresis = COMP_HYSTERESIS_70MV;
   hcomp2.Init.BlankingSrce = COMP_BLANKINGSRC_NONE;
   hcomp2.Init.TriggerMode = COMP_TRIGGERMODE_NONE;
   if (HAL_COMP_Init(&hcomp2) != HAL_OK)
