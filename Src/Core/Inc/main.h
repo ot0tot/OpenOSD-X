@@ -59,14 +59,20 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define NRST_Pin GPIO_PIN_10
+#define NRST_GPIO_Port GPIOG
+#define SWITCH_Pin GPIO_PIN_0
+#define SWITCH_GPIO_Port GPIOB
 #define T_SWDIO_Pin GPIO_PIN_13
 #define T_SWDIO_GPIO_Port GPIOA
 #define T_SWCLK_Pin GPIO_PIN_14
 #define T_SWCLK_GPIO_Port GPIOA
 #define T_SWO_Pin GPIO_PIN_3
 #define T_SWO_GPIO_Port GPIOB
-#define LD2_Pin GPIO_PIN_8
-#define LD2_GPIO_Port GPIOB
+#define DEBUG_Pin GPIO_PIN_6
+#define DEBUG_GPIO_Port GPIOB
+#define BOOT_Pin GPIO_PIN_8
+#define BOOT_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
