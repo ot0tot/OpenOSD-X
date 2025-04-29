@@ -738,6 +738,7 @@ HAL_StatusTypeDef HAL_DMA_PollForTransfer(DMA_HandleTypeDef *hdma, HAL_DMA_Level
   *               the configuration information for the specified DMA Channel.
   * @retval None
   */
+__attribute__((section (".ccmram"), optimize("O2")))
 void HAL_DMA_IRQHandler(DMA_HandleTypeDef *hdma)
 {
   uint32_t flag_it = hdma->DmaBaseAddress->ISR;
