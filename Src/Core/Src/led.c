@@ -1,8 +1,6 @@
-#include "stm32g4xx.h"
-#include "stm32g4xx_ll_dma.h"
-#include "stm32g4xx_ll_tim.h"
 
-DMA_HandleTypeDef hdma_tim8_up;
+#include "main.h"
+#include "led.h"
 
 
 #define WS2812B_0   51          /* 0.3us */
@@ -66,7 +64,7 @@ static void LedDmaComp(DMA_HandleTypeDef *_hdma)
     LL_DMA_DisableChannel(DMA2, LL_DMA_CHANNEL_2);
 }
 
-static void LedSet(const uint32_t *led, uint16_t len)
+static void sendLed(const uint32_t *led, uint16_t len)
 {
     HAL_DMA_RegisterCallback(&hdma_tim8_up, HAL_DMA_XFER_CPLT_CB_ID, LedDmaComp);
     LL_TIM_DisableCounter(TIM8);
@@ -93,24 +91,26 @@ static void LedSet(const uint32_t *led, uint16_t len)
 }
 
 
-void LedInit(void)
+void initLed(void)
 {
-    LedSet(led_off, sizeof(led_off));
+    setLed(LED_OFF);
 }
 
 
-void LedGreen(void)
+void setLed(LED_STATE led)
 {
-    LedSet(led_green128, sizeof(led_green128));
+    switch(led){
+        case LED_OFF:
+            sendLed(led_off, sizeof(led_off));
+            break;
+        case LED_GREEN128:
+            sendLed(led_green128, sizeof(led_green128));
+            break;
+        case LED_RED128:
+            sendLed(led_red128, sizeof(led_red128));
+            break;
+        case LED_BLUE128:
+            sendLed(led_blue128, sizeof(led_blue128));
+            break;
+    }
 }
-
-void LedRed(void)
-{
-    LedSet(led_red128, sizeof(led_green128));
-}
-
-void LedBlue(void)
-{
-    LedSet(led_red128, sizeof(led_green128));
-}
-

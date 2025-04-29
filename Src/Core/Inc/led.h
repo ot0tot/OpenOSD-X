@@ -1,9 +1,14 @@
 #ifndef __LED_H
 #define __LED_H
 
-void LedInit(void);
-void LedGreen(void);
-void LedRed(void);
-void LedBlue(void);
+typedef enum {
+    LED_OFF=0,
+    LED_GREEN128,
+    LED_RED128,
+    LED_BLUE128
+} LED_STATE;
+
+void initLed(void);
+void setLed(LED_STATE led);
 
 #endif
