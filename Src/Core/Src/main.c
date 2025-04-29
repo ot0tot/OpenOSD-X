@@ -684,7 +684,8 @@ uint16_t lenBuffer[2] =  {0};
 int __io_putchar(uint8_t ch) {
     return ITM_SendChar(ch);
 }
-void SetLine(register volatile uint32_t *data, register volatile uint8_t *buf, int line)    __attribute__((section (".ccmram")));
+
+__attribute__((section (".ccmram"), optimize("O2")))
 void SetLine(register volatile uint32_t *data, register volatile uint8_t *buf, int line)
 {
     register volatile uint32_t *fp;
@@ -711,7 +712,7 @@ void SetLine(register volatile uint32_t *data, register volatile uint8_t *buf, i
     return;
 }
 
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)    __attribute__((section (".ccmram")));
+__attribute__((section (".ccmram"), optimize("O2")))
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
 
@@ -729,7 +730,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 //    uint32_t uwIC2Value =  htim->Instance->CCR2;
 //    SEGGER_RTT_printf(0, "%d %d\n", uwIC1Value/17, uwIC2Value/17);
 
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
     if ( vscount >= CANVAS_V_OFFSET && vscount < CANVAS_V ){
 
         LL_TIM_DisableCounter(TIM1);
@@ -757,7 +758,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
     if ((vscount >= CANVAS_V_OFFSET-1)  && vscount < CANVAS_V ){
         SetLine(&dataBuffer[(vcanvas_count) & 0x1][CANVAS_H_OFFSET], &canvas[canvas_active][(vcanvas_count/18)*COLUMN_SIZE], (vcanvas_count) % 18);
     }
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
 
 
     uint32_t uwIC1Value =  htim->Instance->CCR1;
@@ -797,6 +798,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
     }
 }
 
+__attribute__((section (".ccmram"), optimize("O2")))
 void dmaComp(DMA_HandleTypeDef *_hdma)
 {
     UNUSED(_hdma);
