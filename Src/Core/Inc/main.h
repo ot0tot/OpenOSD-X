@@ -28,6 +28,10 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32g4xx_hal.h"
+#include "stm32g4xx_ll_opamp.h"
+#include "stm32g4xx_ll_dma.h"
+#include "stm32g4xx_ll_tim.h"
+#include "stm32g4xx_ll_dac.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -36,6 +40,34 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+
+#define ROW_SIZE 13
+#define COLUMN_SIZE 30
+
+#define CANVAS_H_R  360
+#define CANVAS_H_OFFSET   48       // 4pix(1byte) aligne
+#define CANVAS_H   (CANVAS_H_R + CANVAS_H_OFFSET)
+//#define CANVAS_V   234
+#define CANVAS_V_OFFSET   19
+#define CANVAS_V   (234 + CANVAS_V_OFFSET)
+
+extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc2;
+extern COMP_HandleTypeDef hcomp2;
+extern DAC_HandleTypeDef hdac1;
+extern DAC_HandleTypeDef hdac3;
+extern DMA_HandleTypeDef hdma_dac3_ch1;
+extern OPAMP_HandleTypeDef hopamp1;
+extern OPAMP_HandleTypeDef hopamp2;
+extern SPI_HandleTypeDef hspi2;
+extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim4;
+extern TIM_HandleTypeDef htim8;
+extern DMA_HandleTypeDef hdma_tim1_up;
+extern DMA_HandleTypeDef hdma_tim8_up;
+extern UART_HandleTypeDef huart1;
 
 /* USER CODE END ET */
 
