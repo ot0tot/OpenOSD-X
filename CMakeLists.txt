@@ -50,6 +50,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ./Src/Core/Src/led.c
     ./Src/Core/Src/char_canvas.c
     ./Src/Core/Src/msp.c
+    ./Src/Core/Src/sys_timer.c
     ./Src/Core/Startup/startup_stm32g431kbtx.s
 )
 

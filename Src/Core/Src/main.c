@@ -21,6 +21,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "sys_timer.h"
 #include "msp.h"
 #include "led.h"
 #include "char_canvas.h"
@@ -69,6 +70,7 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim8;
+TIM_HandleTypeDef htim16;
 DMA_HandleTypeDef hdma_tim1_up;
 DMA_HandleTypeDef hdma_tim8_up;
 
@@ -96,6 +98,7 @@ static void MX_OPAMP2_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_TIM4_Init(void);
+static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 
 uint32_t            vscount = 0;
@@ -317,6 +320,7 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM8_Init();
   MX_TIM4_Init();
+  MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
 
     for (int x=0; x<CANVAS_H_OFFSET; x++){
@@ -364,10 +368,12 @@ int main(void)
     LL_TIM_EnableIT_CC1(TIM2);
     LL_TIM_EnableARRPreload(TIM1);
     LL_TIM_EnableCounter(TIM2);
+    HAL_TIM_Base_MspInit(&htim16);
 
     initLed();
     initMsp();
-
+    initSysTimer();
+    
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -1152,6 +1158,38 @@ static void MX_TIM8_Init(void)
 
   /* USER CODE END TIM8_Init 2 */
   HAL_TIM_MspPostInit(&htim8);
+
+}
+
+/**
+  * @brief TIM16 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM16_Init(void)
+{
+
+  /* USER CODE BEGIN TIM16_Init 0 */
+
+  /* USER CODE END TIM16_Init 0 */
+
+  /* USER CODE BEGIN TIM16_Init 1 */
+
+  /* USER CODE END TIM16_Init 1 */
+  htim16.Instance = TIM16;
+  htim16.Init.Prescaler = 17000;
+  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim16.Init.Period = 65535;
+  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim16.Init.RepetitionCounter = 0;
+  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim16) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM16_Init 2 */
+
+  /* USER CODE END TIM16_Init 2 */
 
 }
 
