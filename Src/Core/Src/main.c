@@ -198,10 +198,14 @@ void SetLine(register volatile uint32_t *data, register volatile uint8_t *buf, i
 }
 
 __attribute__((section (".ccmram"), optimize("O2")))
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+void intHsyncFallEdge(void)
 {
 
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
+    // The OPAMP-SEL timer will not be stopped after the transfer is complete - it will simply be left running.
+    // Since the output remains through the next transfer, this poses no problem.
+    // This is intended to reduce interrupts and processing overhead.
+
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
     if ( vscount >= CANVAS_V_OFFSET && vscount < CANVAS_V ){
 
         LL_TIM_DisableCounter(TIM1);
@@ -222,7 +226,6 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_1);
         LL_TIM_ConfigDMABurst(TIM1, LL_TIM_DMABURST_BASEADDR_ARR, LL_TIM_DMABURST_LENGTH_1TRANSFER);
         LL_TIM_EnableDMAReq_UPDATE(TIM1);
-        LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_1);
         LL_TIM_EnableCounter(TIM1);
         vcanvas_count++;
     }
@@ -230,7 +233,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         SetLine(&dataBuffer[(vcanvas_count) & 0x1][CANVAS_H_OFFSET], (uint8_t*)charCanvasGet(vcanvas_count/18), (vcanvas_count) % 18);
     }
 
-    uint32_t uwIC1Value =  htim->Instance->CCR1;
+    uint32_t uwIC1Value =  TIM2->CCR1;
     static uint16_t state = STATE_0;
     switch(state){
         case STATE_0:
@@ -262,17 +265,9 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
             }
             break;
     }
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
 }
 
-__attribute__((section (".ccmram"), optimize("O2")))
-void dmaComp(DMA_HandleTypeDef *_hdma)
-{
-    UNUSED(_hdma);
-    LL_TIM_DisableCounter(TIM1);
-    LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_1);
-    OPAMP1->CSR = TRS;
-}
 
 
 
@@ -330,7 +325,6 @@ int main(void)
     }
     charCanvasInit();
 
-    HAL_DMA_RegisterCallback(&hdma_tim1_up, HAL_DMA_XFER_CPLT_CB_ID, dmaComp);
 
     HAL_COMP_MspInit(&hcomp2);
     HAL_COMP_Start(&hcomp2);

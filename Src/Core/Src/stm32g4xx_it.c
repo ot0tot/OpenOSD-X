@@ -221,6 +221,15 @@ void DMA1_Channel1_IRQHandler(void)
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
+    if ((TIM2->SR & (TIM_FLAG_CC1)) == (TIM_FLAG_CC1)){
+        if ((TIM2->DIER & (TIM_IT_CC1)) == (TIM_IT_CC1)){
+            LL_TIM_ClearFlag_CC1(TIM2);
+            if ((TIM2->CCMR1 & TIM_CCMR1_CC1S) != 0x00U){
+                intHsyncFallEdge();
+            }
+        }
+    }
+
 
   /* USER CODE END TIM2_IRQn 0 */
   HAL_TIM_IRQHandler(&htim2);
