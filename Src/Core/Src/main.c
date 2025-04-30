@@ -348,7 +348,7 @@ int main(void)
 
     HAL_DAC_MspInit(&hdac3);
     HAL_DAC_Start(&hdac3, DAC_CHANNEL_2);
-    HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_2, DAC_ALIGN_12B_R, (0xfff*178)/3300);    // -20IRE + 70mv/2
+    HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_2, DAC_ALIGN_12B_R, (0xfff*500)/3300);    //
 
     HAL_TIM_Base_MspInit(&htim1);
 
@@ -759,10 +759,12 @@ static void MX_OPAMP2_Init(void)
   /* USER CODE END OPAMP2_Init 1 */
   hopamp2.Instance = OPAMP2;
   hopamp2.Init.PowerMode = OPAMP_POWERMODE_HIGHSPEED;
-  hopamp2.Init.Mode = OPAMP_FOLLOWER_MODE;
+  hopamp2.Init.Mode = OPAMP_PGA_MODE;
   hopamp2.Init.NonInvertingInput = OPAMP_NONINVERTINGINPUT_IO0;
   hopamp2.Init.InternalOutput = DISABLE;
   hopamp2.Init.TimerControlledMuxmode = OPAMP_TIMERCONTROLLEDMUXMODE_DISABLE;
+  hopamp2.Init.PgaConnect = OPAMP_PGA_CONNECT_INVERTINGINPUT_NO;
+  hopamp2.Init.PgaGain = OPAMP_PGA_GAIN_4_OR_MINUS_3;
   hopamp2.Init.UserTrimming = OPAMP_TRIMMING_FACTORY;
   if (HAL_OPAMP_Init(&hopamp2) != HAL_OK)
   {
