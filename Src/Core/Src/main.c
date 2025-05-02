@@ -26,6 +26,7 @@
 #include "led.h"
 #include "char_canvas.h"
 #include "font.h"
+#include "cli.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -389,19 +390,28 @@ int main(void)
     if (HAL_OK == HAL_UART_Receive(&huart1, &rxdata, 1, 1)){
         switch(protocol){
             case PROTOCOL_INIT:
+                escCli(rxdata);
                 if ( rxMsp(rxdata) >= 0 ){
                     protocol = PROTOCOL_MSP;
                     setLed(LED_GREEN128);     //provisional
                 }
                 break;
             case PROTOCOL_MSP:
+                escCli(rxdata);
                 rxMsp(rxdata);
                 break;
             case PROTOCOL_FRSKYOSD:
+                escCli(rxdata);
                 break;
             case PROTOCOL_CLI:
-                //rxCli(rxdata);
+                dataCli(rxdata);
                 break;
+        }
+    }else{
+        if (escCli(-1) >= 0 ){
+            protocol = PROTOCOL_CLI;
+            setLed(LED_RED128);     //provisional
+            startCli();
         }
     }
 
