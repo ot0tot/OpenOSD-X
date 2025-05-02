@@ -112,7 +112,7 @@ int32_t rxMsp(uint8_t data)
     
     uint16_t len = rxFrameMsp(data);
     if ( len ){
-#if 1
+#if 0
         printf("rx(%02d) %02x-%02x:",
             len,
             msp_rxdata[0],

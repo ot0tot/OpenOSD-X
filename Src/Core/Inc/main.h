@@ -32,7 +32,7 @@ extern "C" {
 #include "stm32g4xx_ll_dma.h"
 #include "stm32g4xx_ll_tim.h"
 #include "stm32g4xx_ll_dac.h"
-
+#include "stm32g4xx_ll_usart.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
