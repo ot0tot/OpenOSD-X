@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.22)
 
 set(CMAKE_PROJECT_NAME openosd-x)
 
+option(USE_RTT "Enable SEGGER RTT support" OFF)
+
 # Setup compiler settings
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -18,6 +20,16 @@ endif()
 
 # Include toolchain file
 include("cmake/gcc-arm-none-eabi.cmake")
+if(USE_RTT)
+    message(STATUS "RTT enabled")
+    include(${CMAKE_CURRENT_LIST_DIR}/cmake/rtt.cmake)
+    add_definitions(-DUSE_RTT=1)
+else()
+    message(STATUS "RTT disabled")
+    set(RTT_SOURCES "")
+    set(RTT_INCLUDE_DIR "")
+    add_definitions(-DUSE_RTT=0)
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
@@ -53,12 +65,14 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ./Src/Core/Src/sys_timer.c
     ./Src/Core/Src/cli.c
     ./Src/Core/Startup/startup_stm32g431kbtx.s
+    ${RTT_SOURCES}
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add defined include paths
     ./Src/Core/Inc
+    ${RTT_INCLUDE_DIR}
 )
 
 # Add project symbols (macros)

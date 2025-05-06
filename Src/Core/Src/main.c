@@ -27,6 +27,7 @@
 #include "char_canvas.h"
 #include "font.h"
 #include "cli.h"
+#include "log.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -285,7 +286,8 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+    DEBUG_INIT();
+    DEBUG_PRINTF("Start");
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -388,6 +390,7 @@ int main(void)
     static PROTOCOL_STATE protocol = PROTOCOL_INIT;
     uint8_t rxdata;
     if (HAL_OK == HAL_UART_Receive(&huart1, &rxdata, 1, 1)){
+        DEBUG_PRINTF("rx:%x",rxdata);
         switch(protocol){
             case PROTOCOL_INIT:
                 escCli(rxdata);
@@ -414,6 +417,26 @@ int main(void)
             startCli();
         }
     }
+
+#if 1
+    static LED_STATE led_state = LED_OFF;
+    static uint32_t next_time = 1000;
+
+    procSysTimer();
+    if (next_time < HAL_GetTick()){
+        HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
+        next_time += 1000;
+        if (led_state == LED_OFF){
+            led_state = LED_GREEN128;
+        }else{
+            led_state = LED_OFF;
+        }
+        setLed(led_state);
+        DEBUG_PRINTF("led_state=%d",led_state);
+
+        HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
+    }
+#endif
 
   }
   /* USER CODE END 3 */
