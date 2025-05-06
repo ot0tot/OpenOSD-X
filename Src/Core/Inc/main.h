@@ -27,6 +27,7 @@ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
+#include <stdint.h>
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_ll_opamp.h"
 #include "stm32g4xx_ll_dma.h"
