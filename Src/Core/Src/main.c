@@ -42,14 +42,15 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define TICKS_TO_HZ(ticks) ((170000000) / (ticks))
 
 
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define DEBUG_DAC2 0
+#define DEBUG_VIDEO_STANDARD 1
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -122,6 +123,18 @@ typedef enum {
     PROTOCOL_CLI,
 }PROTOCOL_STATE;
 
+typedef enum {
+  VIDEO_UNKNOWN = 0,
+  VIDEO_PAL,
+  VIDEO_NTSC
+} videoStandard_t;
+
+static volatile uint32_t hsync = 0;
+static volatile uint32_t vsync = 0;
+static volatile uint16_t capturedLineCnt = 0;
+static volatile uint16_t lastLineCnt = 0;
+static volatile uint32_t comp2Cnt = 0;
+static videoStandard_t videoStandard = VIDEO_UNKNOWN;
 
 #define BLK 0x138800ed  // VINP3
 #define WHI 0x138800e1  // VINP0
@@ -205,6 +218,27 @@ void SetLine(register volatile uint32_t *data, register volatile uint8_t *buf, i
 __attribute__((section (".ccmram"), optimize("O2")))
 void intHsyncFallEdge(void)
 {
+    comp2Cnt++;
+
+    // Detect video standard: Counting lines every VSYNC and checking the number of lines
+    // When HSYNC the frame is filled & we can know about video standard
+    // NOTE: interlaced
+    // Or capture HSYNC NTSC = 15734kHz, PAL = 15625kHz
+    // We are clocked from internal RC so accuracy is not high
+    if (TIM2->CCR1 > 10000) {
+      hsync = TIM2->CCR1;
+      capturedLineCnt++;
+    } else if (TIM2->CCR1 > 4000) {
+      vsync = TIM2->CCR1;
+      if (capturedLineCnt >= 300) {
+        lastLineCnt = capturedLineCnt;
+        videoStandard = VIDEO_PAL;
+      } else if (capturedLineCnt >= 250) {
+        lastLineCnt = capturedLineCnt;
+        videoStandard = VIDEO_NTSC;
+      } else {}
+      capturedLineCnt = 0;
+    } else {}
 
     // The OPAMP-SEL timer will not be stopped after the transfer is complete - it will simply be left running.
     // Since the output remains through the next transfer, this poses no problem.
@@ -273,8 +307,74 @@ void intHsyncFallEdge(void)
     //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
 }
 
+#if DEBUG_DAC2
+void tuneDacHsyncThreshold(void)
+{
+  const uint32_t hsync_expected_min = 15500;  // Minimum acceptable HSYNC frequency (Hz)
+  const uint32_t hsync_expected_max = 16500;  // Maximum acceptable HSYNC frequency (Hz)
+  const uint32_t timeout_ms = 100;            // Measurement interval per DAC level (ms);
+  const uint32_t dac_start = 100;             // Start DAC value (mV)
+  const uint32_t dac_end = 600;               // End DAC value (mV)
+  const uint32_t dac_step_mV = 10;            // step 10mV
 
+  uint32_t dac_val;
+  uint32_t best_dac = 0;
+  uint32_t best_freq = 0;
 
+  for (uint32_t v = dac_start; v < dac_end; v += dac_step_mV) {
+    dac_val = (0xFFF * v) / 3300;
+    HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_2, DAC_ALIGN_12B_R, dac_val);
+
+    __disable_irq();
+    comp2Cnt = 0;
+    __enable_irq();
+
+    HAL_Delay(timeout_ms); // Wait for signal sampling
+
+    __disable_irq();
+    uint32_t comp_hits = comp2Cnt;
+    __enable_irq();
+
+    // Convert hit count to frequency (Hz)
+    uint32_t freq = (1000 * comp_hits) / timeout_ms;
+    DEBUG_PRINTF("DAC %lumV → freq %lu Hz\n", v, freq);
+
+    // Check if frequency is within HSYNC range
+    if (freq >= hsync_expected_min && freq <= hsync_expected_max && freq > best_freq) {
+      best_freq = freq;
+      best_dac = dac_val;
+    }
+  }
+
+  // Apply best DAC value if valid frequency found
+  if (best_freq > 0) {
+    HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_2, DAC_ALIGN_12B_R, best_dac);
+  } else {
+    // Set default DAC value if no valid frequency found
+    HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_2, DAC_ALIGN_12B_R, (0xfff*500)/3300);
+  }
+
+  charCanvasClear();
+  char tmp[25];
+  sprintf(tmp, "BEST DAC: %lu MV", ((best_dac * 3300) / 0xFFF));
+  charCanvasWrite(1, 1, (uint8_t*)tmp, strlen(t mp));
+  sprintf(tmp, "HSYNC: %lu HZ", best_freq);
+  charCanvasWrite(2, 1, (uint8_t*)tmp, strlen(tmp));
+  charCanvasDraw();
+  HAL_Delay(2000); // Wait to show
+}
+#endif // DEBUG_DAC2
+
+void debugVideoStandard(void)
+{
+  charCanvasClear();
+  char tmp[55];
+  sprintf(tmp, "IRQ TIM2: %lu HZ", TICKS_TO_HZ(hsync));
+  charCanvasWrite(2, 1, (uint8_t*)tmp, strlen(tmp));
+  sprintf(tmp, "LINE: %d - %s ", lastLineCnt, videoStandard == VIDEO_PAL ? "PAL" : "NTSC");
+  charCanvasWrite(3, 1, (uint8_t*)tmp, strlen(tmp));
+  charCanvasDraw();
+}
 
 /* USER CODE END 0 */
 
@@ -376,6 +476,10 @@ int main(void)
     initLed();
     initMsp();
     initSysTimer();
+
+#if DEBUG_DAC2
+    tuneDacHsyncThreshold();
+#endif
     
   /* USER CODE END 2 */
 
@@ -386,6 +490,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+#if DEBUG_VIDEO_STANDARD
+    debugVideoStandard();
+#endif
 
     static PROTOCOL_STATE protocol = PROTOCOL_INIT;
     uint8_t rxdata;
@@ -1331,6 +1438,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(DEBUG_GPIO_Port, &GPIO_InitStruct);
 
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
