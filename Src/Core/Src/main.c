@@ -50,7 +50,7 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 #define DEBUG_DAC2 0
-#define DEBUG_VIDEO_STANDARD 1
+#define DEBUG_VIDEO_STANDARD 0
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -247,27 +247,55 @@ void intHsyncFallEdge(void)
     //HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
     if ( vscount >= CANVAS_V_OFFSET && vscount < CANVAS_V ){
 
-        LL_TIM_DisableCounter(TIM1);
 
-        LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_1);
-        LL_TIM_ClearFlag_UPDATE(TIM1);
-        LL_TIM_SetCounter(TIM1, 0);
-        LL_DMA_ConfigTransfer(DMA1,
-                                              LL_DMA_CHANNEL_1,
-                                              LL_DMA_DIRECTION_MEMORY_TO_PERIPH | LL_DMA_PRIORITY_HIGH | LL_DMA_MODE_NORMAL |
-                                              LL_DMA_PERIPH_NOINCREMENT | LL_DMA_MEMORY_INCREMENT |
-                                              LL_DMA_PDATAALIGN_WORD | LL_DMA_MDATAALIGN_WORD);
-        LL_DMA_ConfigAddresses(DMA1,
-                                               LL_DMA_CHANNEL_1,
-                                               (uint32_t)&dataBuffer[vcanvas_count & 0x1], (uint32_t)&(OPAMP1->CSR),
-                                               LL_DMA_GetDataTransferDirection(DMA1, LL_DMA_CHANNEL_1));
-        LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_1, CANVAS_H +1);  // +1=TRS
-        LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_1);
-        LL_TIM_ConfigDMABurst(TIM1, LL_TIM_DMABURST_BASEADDR_ARR, LL_TIM_DMABURST_LENGTH_1TRANSFER);
-        LL_TIM_EnableDMAReq_UPDATE(TIM1);
-        LL_TIM_EnableCounter(TIM1);
-        vcanvas_count++;
-    }
+    // 1. Stop TIM1
+    TIM1->CR1 &= ~TIM_CR1_CEN;
+
+    // 2. Disable DMA channel
+    DMA1_Channel1->CCR &= ~DMA_CCR_EN;
+
+    // 3. Clear TIM1 update flag
+    TIM1->SR &= ~TIM_SR_UIF;
+
+    // 4. Disable TIM1 DMA
+    TIM1->DIER &= ~TIM_DIER_UDE;
+
+    // 5. Reset TIM1 counter
+    TIM1->CNT = 0;
+
+    // 6. Configure DMA transfer: Mem-to-Periph, High priority, no increment on peripheral, increment memory, 32-bit
+    DMA1_Channel1->CCR = DMA_CCR_DIR       // Memory to peripheral
+                       | DMA_CCR_PL_1      // High priority
+                       | DMA_CCR_MINC      // Memory increment
+                       | DMA_CCR_MSIZE_1   // Memory size: word
+                       | DMA_CCR_PSIZE_1;  // Peripheral size: word
+
+    // 7. Set DMA addresses: source = dataBuffer, destination = OPAMP1->CSR
+    DMA1_Channel1->CPAR = (uint32_t)&OPAMP1->CSR;
+    DMA1_Channel1->CMAR = (uint32_t)&dataBuffer[vcanvas_count & 0x1];
+
+    // 8. Set number of words to transfer
+    DMA1_Channel1->CNDTR = CANVAS_H + 1;
+
+    // 9. Enable DMA channel
+    DMA1_Channel1->CCR |= DMA_CCR_EN;
+
+    // 10. Configure DMA burst on update event (1 transfer from ARR base)
+    TIM1->DCR = (TIM_DMABASE_ARR << TIM_DCR_DBA_Pos) | (TIM_DMABURSTLENGTH_1TRANSFER << TIM_DCR_DBL_Pos);
+
+    // 11. Enable DMA request on TIM1 update event
+    TIM1->DIER |= TIM_DIER_UDE;
+
+    // 12. Start TIM1
+    TIM1->CR1 |= TIM_CR1_CEN;
+
+    // 13. Advance canvas line counter
+    vcanvas_count++;
+
+
+
+
+      }
     if ((vscount >= CANVAS_V_OFFSET-1)  && vscount < CANVAS_V ){
         SetLine(&dataBuffer[(vcanvas_count) & 0x1][CANVAS_H_OFFSET], (uint8_t*)charCanvasGet(vcanvas_count/18), (vcanvas_count) % 18);
     }
@@ -469,7 +497,6 @@ int main(void)
     LL_TIM_CC_EnableChannel(TIM2, LL_TIM_CHANNEL_CH2);
     LL_TIM_CC_EnableChannel(TIM2, LL_TIM_CHANNEL_CH1);
     LL_TIM_EnableIT_CC1(TIM2);
-    LL_TIM_EnableARRPreload(TIM1);
     LL_TIM_EnableCounter(TIM2);
     HAL_TIM_Base_MspInit(&htim16);
 
@@ -997,7 +1024,8 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
-  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_COMBINED_GATEDRESET;
+  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_GATED;
+
   sSlaveConfig.InputTrigger = TIM_TS_ETRF;
   sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_NONINVERTED;
   sSlaveConfig.TriggerPrescaler = TIM_TRIGGERPRESCALER_DIV1;
