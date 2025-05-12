@@ -524,29 +524,33 @@ int main(void)
         DEBUG_PRINTF("rx:%x",rxdata);
         switch(protocol){
             case PROTOCOL_INIT:
-                escCli(rxdata);
+                if ( dataCli(rxdata) > 0 ){
+                    protocol = PROTOCOL_CLI;
+                    setLed(LED_RED128);     //provisional
+                }
                 if ( rxMsp(rxdata) >= 0 ){
                     protocol = PROTOCOL_MSP;
                     setLed(LED_GREEN128);     //provisional
                 }
                 break;
             case PROTOCOL_MSP:
-                escCli(rxdata);
+                if ( dataCli(rxdata) > 0 ){
+                    protocol = PROTOCOL_CLI;
+                    setLed(LED_RED128);     //provisional
+                }
                 rxMsp(rxdata);
                 break;
             case PROTOCOL_FRSKYOSD:
-                escCli(rxdata);
+                if ( dataCli(rxdata) > 0 ){
+                    protocol = PROTOCOL_CLI;
+                    setLed(LED_RED128);     //provisional
+                }
                 break;
             case PROTOCOL_CLI:
                 dataCli(rxdata);
                 break;
         }
-    }else{
-        if (escCli(-1) >= 0 ){
-            protocol = PROTOCOL_CLI;
-            setLed(LED_RED128);     //provisional
-            startCli();
-        }
+
     }
 
 #if 1
