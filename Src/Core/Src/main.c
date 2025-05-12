@@ -280,16 +280,13 @@ void intHsyncFallEdge(void)
     // 9. Enable DMA channel
     DMA1_Channel1->CCR |= DMA_CCR_EN;
 
-    // 10. Configure DMA burst on update event (1 transfer from ARR base)
-    TIM1->DCR = (TIM_DMABASE_ARR << TIM_DCR_DBA_Pos) | (TIM_DMABURSTLENGTH_1TRANSFER << TIM_DCR_DBL_Pos);
-
-    // 11. Enable DMA request on TIM1 update event
+    // 10. Enable DMA request on TIM1 update event
     TIM1->DIER |= TIM_DIER_UDE;
 
-    // 12. Start TIM1
+    // 11. Start TIM1
     TIM1->CR1 |= TIM_CR1_CEN;
 
-    // 13. Advance canvas line counter
+    // 12. Advance canvas line counter
     vcanvas_count++;
 
 
