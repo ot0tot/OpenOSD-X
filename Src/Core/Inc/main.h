@@ -34,6 +34,7 @@ extern "C" {
 #include "stm32g4xx_ll_tim.h"
 #include "stm32g4xx_ll_dac.h"
 #include "stm32g4xx_ll_usart.h"
+#include "stm32g4xx_ll_dac.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -93,6 +94,8 @@ void intHsyncFallEdge(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SPI_CS_Pin GPIO_PIN_0
+#define SPI_CS_GPIO_Port GPIOF
 #define NRST_Pin GPIO_PIN_10
 #define NRST_GPIO_Port GPIOG
 #define SWITCH_Pin GPIO_PIN_0
@@ -101,6 +104,8 @@ void intHsyncFallEdge(void);
 #define T_SWDIO_GPIO_Port GPIOA
 #define T_SWCLK_Pin GPIO_PIN_14
 #define T_SWCLK_GPIO_Port GPIOA
+#define T_SWO_Pin GPIO_PIN_3
+#define T_SWO_GPIO_Port GPIOB
 #define DEBUG_Pin GPIO_PIN_6
 #define DEBUG_GPIO_Port GPIOB
 #define BOOT_Pin GPIO_PIN_8

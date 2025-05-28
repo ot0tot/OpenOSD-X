@@ -22,6 +22,7 @@ void procSysTimer(void)
 
 uint64_t getSysTimer(void)
 {
+    procSysTimer();
     return systime100us;
 }
 

@@ -112,7 +112,7 @@ int32_t rxMsp(uint8_t data)
     
     uint16_t len = rxFrameMsp(data);
     if ( len ){
-#if 0
+#if 1
         printf("rx(%02d) %02x-%02x:",
             len,
             msp_rxdata[0],
@@ -127,7 +127,7 @@ int32_t rxMsp(uint8_t data)
             switch(msp_rxdata[1]){
                 case MSP_DP_HEARTBEAT:
                     if (msp_first){
-                        msp_first = false;
+//                        msp_first = false;
                         uint8_t data[2] = {COLUMN_SIZE,ROW_SIZE};
                         txMsp(0xbc, data, 2);
                     }
