@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include "main.h"
 #include "log.h"
+#include "vtx.h"
 #include "cli.h"
 
 #define STX     0x02
@@ -186,6 +187,7 @@ int32_t dataCli(uint8_t rxdata)
                         return 0;
                     }
                     DEBUG_PRINTF("cli vtx_test freq:%d vpd:%d", freq, vpd);
+                    setVtx(freq, vpd);
                     sendCli(0, NULL, 0);     // ack
                 }   
                 break;

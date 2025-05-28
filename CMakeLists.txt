@@ -64,6 +64,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ./Src/Core/Src/msp.c
     ./Src/Core/Src/sys_timer.c
     ./Src/Core/Src/cli.c
+    ./Src/Core/Src/rtc6705.c
+    ./Src/Core/Src/vtx.c
     ./Src/Core/Startup/startup_stm32g431kbtx.s
     ${RTT_SOURCES}
 )
