@@ -30,6 +30,13 @@ else()
     set(RTT_INCLUDE_DIR "")
     add_definitions(-DUSE_RTT=0)
 endif()
+if(DEV_MODE)
+    message(STATUS "DEV_MODE enabled")
+	set(CLI_SOURCES ${CMAKE_CURRENT_LIST_DIR}/Src/Core/Src/cli.c)
+    add_definitions(-DDEV_MODE=1)
+else()
+    set(CLI_SOURCES "")
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
@@ -66,8 +73,13 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ./Src/Core/Src/cli.c
     ./Src/Core/Src/rtc6705.c
     ./Src/Core/Src/vtx.c
+    ./Src/Core/Src/uart_dma.c
+    ./Src/Core/Src/mspvtx.c
+    ./Src/Core/Src/flash.c
+    ./Src/Core/Src/videosignal_gen.c
     ./Src/Core/Startup/startup_stm32g431kbtx.s
     ${RTT_SOURCES}
+    ${CLI_SOURCES}
 )
 
 # Add include paths
