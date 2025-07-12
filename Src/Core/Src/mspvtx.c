@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include "mspVtx.h"
+#include "mspvtx.h"
 #include "vtx.h"
 #include "log.h"
 #include "msp.h"
