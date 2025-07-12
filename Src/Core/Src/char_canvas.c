@@ -2,8 +2,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include "main.h"
+#include "char_canvas.h"
 
-static uint8_t canvas[2][ROW_SIZE*COLUMN_SIZE] = {0};
+static uint8_t canvas[2][ROW_SIZE_PAL*COLUMN_SIZE] = {0};
 static uint8_t canvas_active = 0;
 static bool canvas_write = false;
 static bool canvas_next = false;
@@ -11,11 +12,15 @@ static bool canvas_next = false;
 
 void charCanvasInit(void)
 {
+#if 0
     uint8_t ch=0;
-    for(int x=0; x<ROW_SIZE*COLUMN_SIZE; x++){
+    for(int x=0; x<ROW_SIZE_PAL*COLUMN_SIZE; x++){
         canvas[0][x] = ch;
         canvas[1][x] = ch++;
     }
+#else
+    memset(canvas, 0, sizeof(canvas));
+#endif
 }
 
 void charCanvasClear(void)
@@ -33,7 +38,7 @@ void charCanvasDraw(void)
 
 void charCanvasWrite(uint8_t row, uint8_t column, uint8_t* data, uint8_t len)
 {
-    if (row < ROW_SIZE){
+    if (row < ROW_SIZE_PAL){
         memcpy(&canvas[canvas_active ^ 1][row*COLUMN_SIZE + column], data, len);
         canvas_write = true;
     }

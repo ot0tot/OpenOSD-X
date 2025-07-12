@@ -28,6 +28,7 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
+#include <stdbool.h>
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_ll_opamp.h"
 #include "stm32g4xx_ll_dma.h"
@@ -43,15 +44,44 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
-#define ROW_SIZE 13
-#define COLUMN_SIZE 30
+//#define PIX_540
 
+#ifdef PIX_540
+
+#define ROW_SIZE_NTSC 26
+#define ROW_SIZE_PAL 32
+#define COLUMN_SIZE 45
+#define CANVAS_H_R  540
+#define CANVAS_H_OFFSET   76       // 4pix(1byte) aligne
+#define PIX_PERIOD 14               // period =14+1 =15
+#define VIDEO_GEN_LINE_SIZE  720    // 170MHz/15734Hz/15=720 ... mod4=0
+#define VIDEO_TIM_NS(t)    (t/88)
+
+#else
+
+#define ROW_SIZE_NTSC 13
+#define ROW_SIZE_PAL 16
+#define COLUMN_SIZE 30
 #define CANVAS_H_R  360
 #define CANVAS_H_OFFSET   48       // 4pix(1byte) aligne
+#define PIX_PERIOD 21               // period=21+1=22
+#define VIDEO_GEN_LINE_SIZE  492    // 170MHz/15734Hz/22=492  ... mod4=0
+#define VIDEO_TIM_NS(t)    (t/129)
+
+#endif
+
 #define CANVAS_H   (CANVAS_H_R + CANVAS_H_OFFSET)
-//#define CANVAS_V   234
-#define CANVAS_V_OFFSET   19
-#define CANVAS_V   (234 + CANVAS_V_OFFSET)
+#define CANVAS_V_OFFSET_NTSC    32
+#define CANVAS_V_OFFSET_PAL     44
+#define CANVAS_V_NTSC           (234*2)     /* 18pix * 13char */
+#define CANVAS_V_PAL            (288*2)     /* 18pix * 16char */
+
+typedef enum {
+    VIDEO_UNKNOWN = 0,
+    VIDEO_NTSC,
+    VIDEO_PAL
+}VIDEO_FORMAT;
+extern VIDEO_FORMAT video_format;
 
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
@@ -75,6 +105,11 @@ extern UART_HandleTypeDef huart1;
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+extern int32_t canvas_v_offset[];
+extern VIDEO_FORMAT video_format;
+#define FONT_SIZE   64
+extern const uint8_t font[256][FONT_SIZE];
+void SetLine(register volatile uint32_t *data, register volatile uint8_t *buf, int line);
 
 /* USER CODE END EC */
 
@@ -86,6 +121,8 @@ extern UART_HandleTypeDef huart1;
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* Exported functions prototypes ---------------------------------------------*/
+bool writeFlashFont(uint16_t addr, uint8_t *data);
+void enableOSD(bool en);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
@@ -110,6 +147,10 @@ void intHsyncFallEdge(void);
 #define DEBUG_GPIO_Port GPIOB
 #define BOOT_Pin GPIO_PIN_8
 #define BOOT_GPIO_Port GPIOB
+
+#define BLK 0x138800ed  // VINP3
+#define WHI 0x138800e1  // VINP0
+#define TRS 0x138800e9  // VINP2
 
 /* USER CODE BEGIN Private defines */
 

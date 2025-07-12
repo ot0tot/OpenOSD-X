@@ -5,7 +5,6 @@
 #include "rtc6705.h"
 //#include "targets.h"
 //#include "common.h"
-//#include "openVTxEEPROM.h"
 //#include "gpio.h"
 
 extern SPI_HandleTypeDef hspi2;
@@ -47,11 +46,11 @@ void rtc6705readRegister(uint8_t addr, uint32_t *data)
 
 uint32_t initRtc6705(void)
 {
-#if 0
     rtc6705writeRegister(StateRegister, 0);
+#if 0
     while(1){
         uint32_t rx;
-        rtc6705readRegister(StateRegister, &rx)
+        rtc6705readRegister(StateRegister, &rx);
         if ((rx & 0x7) == 0x2){
             break;
         }
@@ -61,9 +60,14 @@ uint32_t initRtc6705(void)
     return 0;
 }
 
-void rtc6705ResetState(void)
+uint32_t initRtc6705check(void)
 {
-    rtc6705writeRegister(StateRegister, RTC6705_WRITE_BIT << 4 );
+    uint32_t rx;
+    rtc6705readRegister(StateRegister, &rx);
+    if ((rx & 0x7) == 0x2){
+        return 1;
+    }
+    return 0;
 }
 
 void rtc6705PowerAmpOn(void)
@@ -78,12 +82,12 @@ void rtc6705PowerAmpOff(void)
 
 void rtc6705WriteFrequency(uint16_t newFreq)
 {
-    uint32_t freq = newFreq * 1000000U;
+    uint32_t freq = newFreq * 1000U;
     freq /= 40;
     uint32_t SYN_RF_N_REG = freq / 64;
     uint32_t SYN_RF_A_REG = freq % 64;
 
-    rtc6705writeRegister(SynthesizerRegisterA, (RTC6705_WRITE_BIT << 4) | (SYNTH_REG_A_DEFAULT << 5));
-    rtc6705writeRegister(SynthesizerRegisterB, (SYN_RF_A_REG << 5) | (SYN_RF_N_REG << 12));
+    rtc6705writeRegister(SynthesizerRegisterA, SYNTH_REG_A_DEFAULT);      // reset
+    rtc6705writeRegister(SynthesizerRegisterB, SYN_RF_A_REG | (SYN_RF_N_REG << 7));
 }
 

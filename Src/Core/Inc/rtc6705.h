@@ -25,6 +25,7 @@
 #define PLL_SETTLE_TIME 500
 
 uint32_t initRtc6705(void);
+uint32_t initRtc6705check(void);
 void rtc6705PowerAmpOn(void);
 void rtc6705PowerAmpOff(void);
 void rtc6705WriteFrequency(uint16_t newFreq);
