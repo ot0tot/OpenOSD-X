@@ -4,7 +4,7 @@ The OSD component is intended to be implemented solely with the STM32G431.
 The project is currently under development.   
 ## 📺 Development Preview Video
 [![Watch the video](https://img.youtube.com/vi/yP9opvcfM-8/0.jpg)](https://youtu.be/yP9opvcfM-8)
-## BreakoutBboard BlockDiagram and Schematic
+## BreakoutBoard BlockDiagram and Schematic
 https://github.com/OpenOSD-X/OpenOSD-X/tree/main/doc
 ## Developers Channel
 There's a dedicated Discord server here:
