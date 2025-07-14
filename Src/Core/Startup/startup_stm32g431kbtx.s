@@ -96,10 +96,10 @@ LoopFillZerobss:
   cmp r2, r4
   bcc FillZerobss
 
-/* Copy from flash to CCMRAM */
-  ldr r0, =_sccmram
-  ldr r1, =_eccmram
-  ldr r2, =_siccmram
+/* Copy from flash to CCMRAM_CODE */
+  ldr r0, =_sccmram_code
+  ldr r1, =_eccmram_code
+  ldr r2, =_siccmram_code
   movs r3, #0
   b  LoopCopyCcmInit
 
@@ -113,6 +113,25 @@ LoopCopyCcmInit:
   cmp r4, r1
   bcc CopyCcmInit
 /* End of copy to CCMRAM */
+
+/* Copy from flash to SRAM2 */
+  ldr r0, =_ssram2
+  ldr r1, =_esram2
+  ldr r2, =_sisram2
+  movs r3, #0
+  b  LoopCopySram2Init
+
+CopySram2Init:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopySram2Init:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopySram2Init
+/* End of copy to SRAM2 */
+
 
 /* Call static constructors */
     bl __libc_init_array

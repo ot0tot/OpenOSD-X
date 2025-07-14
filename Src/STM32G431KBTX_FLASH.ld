@@ -36,7 +36,7 @@
 ENTRY(Reset_Handler)
 
 /* Highest address of the user mode stack */
-_estack = ORIGIN(RAM) + LENGTH(RAM); /* end of "RAM" Ram type memory */
+_estack = ORIGIN(CCMRAM_DATA) + LENGTH(CCMRAM_DATA);
 
 _Min_Heap_Size = 0x200; /* required amount of heap */
 _Min_Stack_Size = 0x400; /* required amount of stack */
@@ -44,11 +44,13 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 /* Memories definition */
 MEMORY
 {
-  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 32K
-/*  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 128K	*/
-  FLASH         (rx) : ORIGIN = 0x8000000,   LENGTH = 96K
-  FLASH_FONT    (r)  : ORIGIN = 0x8018000,   LENGTH = 32K
-  CCMRAM (xrw)  : ORIGIN = 0x10000000, LENGTH = 8K
+  RAM     (xrw)      : ORIGIN = 0x20000000,  LENGTH = 16K
+  SRAM2   (rw)       : ORIGIN = 0x20004000,  LENGTH = 6K
+  CCMRAM_DATA (rw)   : ORIGIN = 0x20006000,  LENGTH = 4K
+  CCMRAM_CODE(xrw)   : ORIGIN = 0x10000000,  LENGTH = 4K
+  FLASH    (rx)      : ORIGIN = 0x08000000,   LENGTH = 92K
+  FLASH_FONT (r)     : ORIGIN = 0x08017000,   LENGTH = 32K
+  FLASH_SETTING (r)  : ORIGIN = 0x0801F000,   LENGTH = 4K
 }
 
 /* Sections */
@@ -62,18 +64,30 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
-/*--- New CCMRAM linker section definition ---*/
-  _siccmram = LOADADDR(.ccmram);
-  /* CCMRAM section */
-  .ccmram :  {
+/*--- New CCMCODE linker section definition ---*/
+  _siccmram_code = LOADADDR(.ccmram_code);
+  /* CCMRAM_CODEC section */
+  .ccmram_code :  {
     . = ALIGN(4);
-    _sccmram = .;        /* define a global symbols at ccmram start */
-    *(.ccmram)
-         *(.ccmram*)
+    _sccmram_code = .;        /* define a global symbols at ccmram_code start */
+    *(.ccmram_code)
+         *(.ccmram_code*)
     . = ALIGN(4);
-    _eccmram = .;        /* define a global symbols at ccmram end */
-  } >CCMRAM AT> FLASH
-  /*--- End of CCMRAM linker section definition ---*/
+    _eccmram_code = .;        /* define a global symbols at ccmram_code end */
+  } >CCMRAM_CODE AT> FLASH
+/*--- End of CCMCODE linker section definition ---*/
+
+/* sram2 */
+  _sisram2 = LOADADDR(.sram2);
+  .sram2 :  {
+    . = ALIGN(4);
+    _ssram2 = .;
+    *(.sram2)
+         *(.sram2*)
+    . = ALIGN(4);
+    _esram2 = .;
+  } >SRAM2 AT> FLASH
+/* sram2 */
 
 /* Font */
   .font :  {
@@ -82,6 +96,14 @@ SECTIONS
     *(.font)
   } >FLASH_FONT
 /* Font */
+
+/* Setting */
+  .setting (NOLOAD) :  {
+    . = ALIGN(4);
+    _setting = .;        /* define a global symbols at start */
+    *(.setting)
+  } >FLASH_SETTING
+/* Setting */
 
   /* The program code and other data into "FLASH" Rom type memory */
   .text :
@@ -197,7 +219,7 @@ SECTIONS
     . = . + _Min_Heap_Size;
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
-  } >RAM
+  } >CCMRAM_DATA
 
   /* Remove information from the compiler libraries */
   /DISCARD/ :

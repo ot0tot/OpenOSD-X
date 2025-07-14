@@ -55,8 +55,12 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern DMA_HandleTypeDef hdma_dac3_ch1;
 extern DMA_HandleTypeDef hdma_tim1_up;
+extern DMA_HandleTypeDef hdma_tim8_up;
 extern TIM_HandleTypeDef htim2;
+extern DMA_HandleTypeDef hdma_usart1_rx;
+extern DMA_HandleTypeDef hdma_usart1_tx;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -186,7 +190,7 @@ void SysTick_Handler(void)
   /* USER CODE BEGIN SysTick_IRQn 0 */
 
   /* USER CODE END SysTick_IRQn 0 */
-  HAL_IncTick();
+  //HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
 
   /* USER CODE END SysTick_IRQn 1 */
@@ -219,13 +223,51 @@ void DMA1_Channel1_IRQHandler(void)
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
+    if ((TIM2->SR & (TIM_FLAG_CC1)) == (TIM_FLAG_CC1)){
+        if ((TIM2->DIER & (TIM_IT_CC1)) == (TIM_IT_CC1)){
+            LL_TIM_ClearFlag_CC1(TIM2);
+            if ((TIM2->CCMR1 & TIM_CCMR1_CC1S) != 0x00U){
+                intHsyncFallEdge();
+            }
+        }
+    }
+
 
   /* USER CODE END TIM2_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim2);
+//  HAL_TIM_IRQHandler(&htim2);
   /* USER CODE BEGIN TIM2_IRQn 1 */
 
   /* USER CODE END TIM2_IRQn 1 */
 }
+
+/**
+  * @brief This function handles DMA2 channel1 global interrupt.
+  */
+void DMA2_Channel1_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Channel1_IRQn 0 */
+
+  /* USER CODE END DMA2_Channel1_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_dac3_ch1);
+  /* USER CODE BEGIN DMA2_Channel1_IRQn 1 */
+
+  /* USER CODE END DMA2_Channel1_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA2 channel2 global interrupt.
+  */
+void DMA2_Channel2_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Channel2_IRQn 0 */
+
+  /* USER CODE END DMA2_Channel2_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_tim8_up);
+  /* USER CODE BEGIN DMA2_Channel2_IRQn 1 */
+
+  /* USER CODE END DMA2_Channel2_IRQn 1 */
+}
+
 
 /* USER CODE BEGIN 1 */
 
