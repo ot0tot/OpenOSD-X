@@ -75,6 +75,8 @@ extern "C" {
 #define CANVAS_V_OFFSET_PAL     44
 #define CANVAS_V_NTSC           (234*2)     /* 18pix * 13char */
 #define CANVAS_V_PAL            (288*2)     /* 18pix * 16char */
+#define ROW_SIZE_MAX 32
+#define COLUMN_SIZE_MAX 45
 
 typedef enum {
     VIDEO_UNKNOWN = 0,

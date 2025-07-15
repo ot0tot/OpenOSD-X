@@ -77,6 +77,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ./Src/Core/Src/mspvtx.c
     ./Src/Core/Src/flash.c
     ./Src/Core/Src/videosignal_gen.c
+    ./Src/Core/Src/setting.c
     ./Src/Core/Startup/startup_stm32g431kbtx.s
     ${RTT_SOURCES}
     ${CLI_SOURCES}

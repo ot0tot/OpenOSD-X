@@ -4,7 +4,8 @@
 #include "main.h"
 #include "char_canvas.h"
 
-static uint8_t canvas[2][ROW_SIZE_PAL*COLUMN_SIZE] = {0};
+static uint8_t canvas[2][ROW_SIZE_MAX * COLUMN_SIZE_MAX] = {0};
+
 static uint8_t canvas_active = 0;
 static bool canvas_write = false;
 static bool canvas_next = false;

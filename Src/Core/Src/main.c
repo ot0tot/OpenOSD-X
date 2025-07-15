@@ -33,6 +33,7 @@
 #include "uart_dma.h"
 #include "videosignal_gen.h"
 #include "flash.h"
+#include "setting.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -140,6 +141,7 @@ typedef enum {
     STATE_TUNE_PULSE_LEVEL_HIGH,
     STATE_VSYNC_WAIT,
     STATE_SYNC,
+    STATE_DISABLE,
 }STATE;
 STATE state = STATE_LOST;
 
@@ -149,6 +151,7 @@ char *state_str[] = {
     "STATE_TUNE_PULSE_LEVEL_HIGH",
     "STATE_VSYNC_WAIT",
     "STATE_SYNC",
+    "STATE_DISABLE",
 };
 
 int32_t canvas_v_offset[]  ={0, CANVAS_V_OFFSET_NTSC, CANVAS_V_OFFSET_PAL};
@@ -156,6 +159,7 @@ int32_t canvas_v[]         ={0, CANVAS_V_NTSC, CANVAS_V_PAL};
 
 static uint16_t pluse_level_low = 1000;
 static uint16_t pluse_level_high = 0;
+static uint16_t state_lost_count = 0;
 
 static bool osd_ebable = true;
 
@@ -213,6 +217,17 @@ int __io_putchar(uint8_t ch) {
     return ITM_SendChar(ch);
 }
 
+void osd_enable(uint8_t en)
+{
+    if (en){
+        state = STATE_LOST;
+        state_lost_count = 0;
+    }else{
+        state = STATE_DISABLE;
+        videosignal_gen_stop();
+    }
+}
+
 __attribute__((section (".ccmram_code"), optimize("O2")))
 void SetLine(register volatile uint32_t *data, register volatile uint8_t *buf, int line)
 {
@@ -245,33 +260,35 @@ void intHsyncFallEdge(void)
 {
     HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
 
-    volatile uint32_t uwIC1Value = TIM2->CCR1;      // down to down edge
-    volatile uint32_t uwIC2Value = TIM2->CCR2;      // down to up edge;
+    if (state != STATE_DISABLE){
+        volatile uint32_t uwIC1Value = TIM2->CCR1;      // down to down edge
+        volatile uint32_t uwIC2Value = TIM2->CCR2;      // down to up edge;
 
-    DETECT_SYNC detect_sync = DETECT_UNKNOWN;
+        DETECT_SYNC detect_sync = DETECT_UNKNOWN;
 
-    #define HSYNC_PERIOD_MIN (572*17)   // 63.5*0.9  ntsc:63.5
-    #define HSYNC_PERIOD_MAX (704*17)   // 64.0*1.1  pal:64.0
-    #define HSYNC_PULSE_MIN (44*17)
-    #define HSYNC_PULSE_MAX (50*17)
-    #define VSYNC_PULSE_MIN (244*17)
-    #define VSYNC_PULSE_MAX (298*17)
-    #define EQUIVALENT_PULSE_MIN    (20*17)
-    #define EQUIVALENT_PULSE_MAX    (26*17)
+        #define HSYNC_PERIOD_MIN (572*17)   // 63.5*0.9  ntsc:63.5
+        #define HSYNC_PERIOD_MAX (704*17)   // 64.0*1.1  pal:64.0
+        #define HSYNC_PULSE_MIN (44*17)
+        #define HSYNC_PULSE_MAX (50*17)
+        #define VSYNC_PULSE_MIN (244*17)
+        #define VSYNC_PULSE_MAX (298*17)
+        #define EQUIVALENT_PULSE_MIN    (20*17)
+        #define EQUIVALENT_PULSE_MAX    (26*17)
 
-    if (    uwIC1Value > HSYNC_PERIOD_MIN && uwIC1Value < HSYNC_PERIOD_MAX &&
-            uwIC2Value > HSYNC_PULSE_MIN && uwIC2Value < HSYNC_PULSE_MAX ){
-                detect_sync = DETECT_HSYNC;
-    } else if ( uwIC1Value > HSYNC_PERIOD_MIN/2 && uwIC1Value < HSYNC_PERIOD_MAX/2 &&
-                uwIC2Value > EQUIVALENT_PULSE_MIN && uwIC2Value < EQUIVALENT_PULSE_MAX ){
-                    detect_sync = DETECT_EQUIVALENT;
-    }else if (  uwIC1Value > HSYNC_PERIOD_MIN/2 && uwIC1Value < HSYNC_PERIOD_MAX/2 &&
-                uwIC2Value > VSYNC_PULSE_MIN && uwIC2Value < VSYNC_PULSE_MAX ){
-                    detect_sync = DETECT_VSYNC;
+        if (    uwIC1Value > HSYNC_PERIOD_MIN && uwIC1Value < HSYNC_PERIOD_MAX &&
+                uwIC2Value > HSYNC_PULSE_MIN && uwIC2Value < HSYNC_PULSE_MAX ){
+                    detect_sync = DETECT_HSYNC;
+        } else if ( uwIC1Value > HSYNC_PERIOD_MIN/2 && uwIC1Value < HSYNC_PERIOD_MAX/2 &&
+                    uwIC2Value > EQUIVALENT_PULSE_MIN && uwIC2Value < EQUIVALENT_PULSE_MAX ){
+                        detect_sync = DETECT_EQUIVALENT;
+        }else if (  uwIC1Value > HSYNC_PERIOD_MIN/2 && uwIC1Value < HSYNC_PERIOD_MAX/2 &&
+                    uwIC2Value > VSYNC_PULSE_MIN && uwIC2Value < VSYNC_PULSE_MAX ){
+                        detect_sync = DETECT_VSYNC;
+        }
+
+        osd_dma(detect_sync);
+        sync_detect(detect_sync);
     }
-
-    osd_dma(detect_sync);
-    sync_detect(detect_sync);
 
     HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
 }
@@ -416,7 +433,6 @@ void osd_dma(DETECT_SYNC detect_sync)
 
 void sync_proc(void)
 {
- static uint16_t state_lost_count = 0;
  static uint32_t state_time = 0;
 
     uint32_t now = HAL_GetTick();
@@ -482,6 +498,9 @@ void sync_proc(void)
                     video_format = VIDEO_PAL;
                 }
             }
+            break;
+        case STATE_DISABLE:
+            HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_2, DAC_ALIGN_12B_R, (0xfff*pluse_level_high)/3300);
             break;
     }
     sync_count = 0;
@@ -591,7 +610,6 @@ int main(void)
     HAL_TIM_Base_MspInit(&htim16);
     initSysTimer();
 
-    uart_init();
     for (int x=0; x<CANVAS_H_OFFSET; x++){
         dataBuffer[0][x] = TRS;
         dataBuffer[1][x] = TRS;
@@ -636,19 +654,12 @@ int main(void)
     LL_TIM_EnableIT_CC1(TIM2);
     LL_TIM_EnableCounter(TIM2);
 
-
-
-//    uart_init();
-//    initRtc6705();
+    setting_init();
+    uart_init();
     initLed();
     msp_init();
-    DEBUG_PRINTF("%s(%d)", __func__, __LINE__);
     initVtx();
-    DEBUG_PRINTF("%s(%d)", __func__, __LINE__);
     mspVtx_init();
-    setVtx(5800, 14);
-
-    DEBUG_PRINTF("%s(%d)", __func__, __LINE__);
 
 #ifdef DEV_MODE
     startCli();
@@ -666,7 +677,6 @@ int main(void)
 #ifdef  DEV_MODE
     uart_poll();
     if (!uart_read_byte(&rxdata)) {
-        DEBUG_PRINTF("rx:%x",rxdata);
         dataCli(rxdata);
     }
     static uint32_t diag_time = 100;
@@ -679,17 +689,17 @@ int main(void)
         charCanvasWrite(1,0, (uint8_t*)buf, strlen(buf));
         sprintf(buf,"LINE........%d (%s)", (int)video_line_last, video_format_str[video_format]);
         charCanvasWrite(2,1, (uint8_t*)buf, strlen(buf));
-        sprintf(buf,"SYNC-TH.....%dMV (%d-%d)", (pluse_level_high+pluse_level_low)/2, pluse_level_low, pluse_level_high);
+        sprintf(buf,"SYNC-TH.....%04dMV (%d-%d)", (pluse_level_high+pluse_level_low)/2, pluse_level_low, pluse_level_high);
         charCanvasWrite(3,1, (uint8_t*)buf, strlen(buf));
         sprintf(buf,"%s", "---VTX---");
         charCanvasWrite(4,0, (uint8_t*)buf, strlen(buf));
-        sprintf(buf,"FREQ........%dMHZ", getVtxFreq());
+        sprintf(buf,"FREQ........%04dMHZ", getVtxFreq());
         charCanvasWrite(5,1, (uint8_t*)buf, strlen(buf));
-        sprintf(buf,"VPD.........%dMV", getVpd());
+        sprintf(buf,"VPD.........%04dMV", getVpd());
         charCanvasWrite(6,1, (uint8_t*)buf, strlen(buf));
-        sprintf(buf,"VPD-TARGET..%dMV", getVpdTarget());
+        sprintf(buf,"VPD-TARGET..%04dMV", getVpdTarget());
         charCanvasWrite(7,1, (uint8_t*)buf, strlen(buf));
-        sprintf(buf,"VREF........%dMV", getVref());
+        sprintf(buf,"VREF........%04dMV", getVref());
         charCanvasWrite(8,1, (uint8_t*)buf, strlen(buf));
         charCanvasDraw();
     }
@@ -708,20 +718,21 @@ int main(void)
 
 #if 1
     static LED_STATE led_state = LED_OFF;
-    static uint32_t next_time = 1000;
-//    static uint32_t state_time = 5;
+    static uint32_t previous_time = 0;
 
     procSysTimer();
     sync_proc();
     procVtx();
 
-    if (next_time < HAL_GetTick()){
-        next_time += 1000;
+    uint32_t now = HAL_GetTick();
+    if (now - previous_time > 1000){
+        previous_time = now;
         if (led_state == LED_OFF){
             led_state = LED_GREEN128;
         }else{
             led_state = LED_OFF;
         }
+        setting_update();
         setLed(led_state);
         DEBUG_PRINTF("led_state=%d",led_state);
 
