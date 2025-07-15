@@ -14,7 +14,7 @@
 #include "msp.h"
 #include "uart_dma.h"
 #include "setting.h"
-#include "mspVtx.h"
+#include "mspvtx.h"
 
 // ====================================================================================
 // MSP Protocol Definitions
