@@ -128,6 +128,7 @@ void enableOSD(bool en);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+void osd_enable(uint8_t en);
 void intHsyncFallEdge(void);
 
 /* USER CODE END EFP */
