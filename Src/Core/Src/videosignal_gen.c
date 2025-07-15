@@ -19,7 +19,7 @@ void videoGen2ndData(uint16_t *buf, uint16_t size, uint16_t line);
 #define VG_GRY  0x0280
 #define VG_WHI  0x0400
 
-const videoGenFunc videoGenFuncTable[1050] = {
+const videoGenFunc videoGenFuncTable[1051] = {
     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     // 1-6
     videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   // 7-12
     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     // 13-18
@@ -130,6 +130,7 @@ const videoGenFunc videoGenFuncTable[1050] = {
     videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1021-1030
     videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1031-1040
     videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1041-1050
+    NULL
 };
 
 #define VG_SYN  0
@@ -525,7 +526,6 @@ void videoGen1stData(uint16_t *buf, uint16_t size, uint16_t line)
     hpos2nd = size - cnt;
 
 #ifdef PIX_540
-//        int line=0;
         if (videoGenCount < 525){
             setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(line*2/18), (line*2) % 18, 0, hpos2nd);
         }else{
@@ -544,7 +544,6 @@ void videoGen2ndData(uint16_t *buf, uint16_t size, uint16_t line)
     uint16_t cnt = 0;
 
 #ifdef PIX_540
-//        int line;
         if (videoGenCount < 525){
             setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(line*2/18), (line*2) % 18, hpos2nd, CANVAS_H_R - hpos2nd);
         }else{
@@ -567,8 +566,11 @@ void dmaComp2cp(DMA_HandleTypeDef *_hdma)
 
     HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
 
-    videoGenCount = (videoGenCount+1) % 1050;
     (videoGenFuncTable[videoGenCount])(&videoBuff[VIDEO_GEN_LINE_SIZE/2], VIDEO_GEN_LINE_SIZE/2, vg_vcanvas_count);
+    videoGenCount++;
+    if (videoGenFuncTable[videoGenCount] == NULL){
+        videoGenCount = 0;
+    }
 
     int16_t videoGenCount525 = (videoGenCount % 525)/2 -9;
     if ( videoGenCount525 >= CANVAS_V_OFFSET_NTSC && videoGenCount525 < CANVAS_V_NTSC ){
@@ -590,17 +592,19 @@ void dmaComp2ht(DMA_HandleTypeDef *_hdma)
 {
     UNUSED(_hdma);
     HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
-    videoGenCount = (videoGenCount+1) % 1050;
-//    (videoGenFuncTable[videoGenCount])(&videoBuff[0], VIDEO_GEN_LINE_SIZE/2, vg_vcanvas_count);
+    (videoGenFuncTable[videoGenCount])(&videoBuff[0], VIDEO_GEN_LINE_SIZE/2, vg_vcanvas_count);
+    videoGenCount++;
+    if (videoGenFuncTable[videoGenCount] == NULL){
+        videoGenCount = 0;
+    }
     HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
 }
 
 
 void videosignal_gen_start(void)
 {
-#if 0
-//    (videoGenFuncTable[0])(&videoBuff[0], VIDEO_GEN_LINE_SIZE/2);
-//    (videoGenFuncTable[1])(&videoBuff[VIDEO_GEN_LINE_SIZE/2],VIDEO_GEN_LINE_SIZE/2);
+    videoGenBLK(&videoBuff[0], VIDEO_GEN_LINE_SIZE/2, 0);
+    videoGenBLK(&videoBuff[VIDEO_GEN_LINE_SIZE/2],VIDEO_GEN_LINE_SIZE/2, 0);
     videoGenCount = 0;
 
     HAL_TIM_Base_MspInit(&htim4);
@@ -633,12 +637,10 @@ void videosignal_gen_start(void)
     LL_DAC_SetTriggerSource(DAC3, LL_DAC_CHANNEL_1, LL_DAC_TRIG_EXT_TIM4_TRGO);
     LL_DAC_Enable(DAC3, LL_DAC_CHANNEL_1);
     LL_TIM_EnableCounter(TIM4);
-#endif
 }
 
 void videosignal_gen_stop(void)
 {
-#if 0
     LL_TIM_DisableCounter(TIM4);
     LL_DAC_SetTriggerSource(DAC3, LL_DAC_CHANNEL_1, LL_DAC_TRIG_SOFTWARE);
 
@@ -647,6 +649,5 @@ void videosignal_gen_stop(void)
     LL_DAC_DisableDMAReq(DAC3, LL_DAC_CHANNEL_1);
     LL_DMA_DisableIT_TC(DMA2, LL_DMA_CHANNEL_1);
     LL_DMA_DisableIT_HT(DMA2, LL_DMA_CHANNEL_1);
-#endif
 }
 

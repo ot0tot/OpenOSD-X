@@ -501,7 +501,7 @@ void msp_send_reply(uint16_t command, const uint8_t *payload, uint8_t payload_si
         // The range usually starts from the 'flags' byte.
         tx_buffer[tx_index++] = msp_calculate_checksum_v2(&tx_buffer[3], payload_size + 5); // Checksum from flags byte
     }
-#if 0
+#if 1
     DEBUG_PRINTTIMESTAMP();
     DEBUG_PRINTRAW("tx:");
     for (int x=0; x<tx_index; x++){

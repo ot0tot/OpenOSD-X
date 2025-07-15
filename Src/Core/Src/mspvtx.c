@@ -9,12 +9,12 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include "mspvtx.h"
 #include "vtx.h"
 #include "log.h"
 #include "msp.h"
 #include "uart_dma.h"
-#include "flash.h"
+#include "setting.h"
+#include "mspvtx.h"
 
 // ====================================================================================
 // MSP Protocol Definitions
@@ -98,34 +98,6 @@ typedef struct
     uint8_t channels;
     uint8_t powerLevels;
 } mspVtxConfigStruct;
-
-typedef struct
-{
-    uint16_t version;
-    uint8_t channel;
-    uint8_t powerIndex;
-    uint8_t pad1;
-    uint8_t pad2;
-    uint8_t pad3;
-    uint8_t pad4;
-} openVTxEEPROM;
-
-const openVTxEEPROM myEEPROM_default = {
-        1,      //version
-        27,     //channel
-        2,     //powerIndex
-        0,
-        0,
-        0,
-        0
-};
-
-openVTxEEPROM myEEPROM, myEEPROM_backup;
-uint16_t updateEEPROMtime = 0;
-
-__attribute__((section(".setting")))
-const openVTxEEPROM flash_setting;
-//#define FLASH_SETTING   0x0801f000
 
 const uint8_t channelFreqLabel[48] = {
     'B', 'A', 'N', 'D', '_', 'A', ' ', ' ', // A
@@ -371,8 +343,8 @@ void mspvtx_VtxConfig(uint8_t *packet)
         if (vtxconfig->lowPowerDisarm) {
             vtxconfig->power = 0;
         }
-        myEEPROM.powerIndex = vtxconfig->power;
-        myEEPROM.channel = ((vtxconfig->band - 1) * 8) + (vtxconfig->channel - 1);
+        setting()->powerIndex = vtxconfig->power;
+        setting()->channel = ((vtxconfig->band - 1) * 8) + (vtxconfig->channel - 1);
 
         // Check if the FC's VTX table size matches OpenVTx's definition.
         if (vtxconfig->bands == getFreqTableBands() &&
@@ -399,8 +371,8 @@ void mspvtx_VtxConfig(uint8_t *packet)
         // Set power before changing frequency to avoid interference on other frequencies.
         uint8_t channelIndex = ((vtxconfig->band - 1) * 8) + (vtxconfig->channel - 1);
         if (channelIndex < getFreqTableSize()) {
-            myEEPROM.powerIndex = powerIndex;
-            myEEPROM.channel = channelIndex;
+            setting()->powerIndex = powerIndex;
+            setting()->channel = channelIndex;
             setVtx(channelFreqTable[channelIndex], saPowerLevelsLut[powerIndex]);
         }
     }
@@ -526,17 +498,6 @@ void mspvtx_Ack(uint16_t function)
 }
 
 
-void vtx_setting_print(openVTxEEPROM *setting)
-{
-#ifdef DEV_MODE
-    UNUSED(setting);
-#endif
-    DEBUG_PRINTF(" version:%d", setting->version);
-    DEBUG_PRINTF(" channel:%d (%c%d)", setting->channel, bandLetter[setting->channel/8], (setting->channel%8)+1);
-    DEBUG_PRINTF(" powerIndex:%d", setting->powerIndex);
-    
-
-}
 /**
  * @brief Main update loop for MSP communication.
  *
@@ -555,21 +516,6 @@ void mspUpdate(void)
     }
     // Update the next query time (acts as a timeout if no reply is received).
     nextFlightControllerQueryTime = now;
-
-    // vtx setting to flash
-    if (memcmp(&myEEPROM_backup, &myEEPROM, sizeof(openVTxEEPROM))){
-        memcpy(&myEEPROM_backup, &myEEPROM, sizeof(openVTxEEPROM));
-        updateEEPROMtime = 1000/FC_QUERY_PERIOD_MS; // 1sec
-    }
-    if ( updateEEPROMtime ){
-        if ( --updateEEPROMtime == 0 ){
-            flash_erase((uint32_t)&flash_setting, sizeof(openVTxEEPROM));
-            flash_write((uint32_t)&flash_setting, (uint8_t*)&myEEPROM, sizeof(openVTxEEPROM));
-            memcpy(&myEEPROM_backup, &flash_setting, sizeof(openVTxEEPROM));
-            DEBUG_PRINTF("--vtx_update--");
-            vtx_setting_print(&myEEPROM);
-        }
-    }
 
     DEBUG_PRINTF("mspState:%s", mspStaetString[(uint8_t)mspState]);
 
@@ -592,9 +538,9 @@ void mspUpdate(void)
             // Apply default settings to the VTX immediately, in sync with the FC.
             initFreqPacketRecived = 1;
             pitMode = VTX_DEFAULT_PITMODE_STATE;
-            myEEPROM.powerIndex = VTX_DEFAULT_POWER_INDEX - 1;
-            myEEPROM.channel = VTX_DEFAULT_BAND_CHAN_INDEX;
-            setVtx(channelFreqTable[myEEPROM.channel], saPowerLevelsLut[myEEPROM.powerIndex]);
+            setting()->powerIndex = VTX_DEFAULT_POWER_INDEX - 1;
+            setting()->channel = VTX_DEFAULT_BAND_CHAN_INDEX;
+            setVtx(channelFreqTable[setting()->channel], saPowerLevelsLut[setting()->powerIndex]);
             break;
 
         case SEND_EEPROM_WRITE:
@@ -606,7 +552,7 @@ void mspUpdate(void)
             // valid settings are received from the FC at startup.
             if (!initFreqPacketRecived) {
                 initFreqPacketRecived = 1;
-                setVtx(channelFreqTable[myEEPROM.channel], saPowerLevelsLut[myEEPROM.powerIndex]);
+                setVtx(channelFreqTable[setting()->channel], saPowerLevelsLut[setting()->powerIndex]);
             }
             break;
             
@@ -618,14 +564,7 @@ void mspUpdate(void)
 
 void mspVtx_init(void)
 {
-    memcpy(&myEEPROM, &flash_setting, sizeof(myEEPROM));
-    memcpy(&myEEPROM_backup, &myEEPROM, sizeof(myEEPROM));
-
-    if (myEEPROM.version != myEEPROM_default.version) {
-        memcpy(&myEEPROM, &myEEPROM_default, sizeof(myEEPROM));
-    }
-
-    DEBUG_PRINTF("--vtx_init--");
-    vtx_setting_print(&myEEPROM);
+    mspState = MSP_STATE_GET_VTX_TABLE_SIZE;
+    setVtx(channelFreqTable[setting()->channel], saPowerLevelsLut[setting()->powerIndex]);
 }
 

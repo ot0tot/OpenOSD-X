@@ -81,7 +81,6 @@ void initVtx(void)
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_2);
     rtc6705PowerAmpOff();
     initRtc6705();
-//    setVtx(5800, 0);
 }
 
 
