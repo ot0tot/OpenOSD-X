@@ -11,6 +11,11 @@ typedef struct
     uint16_t magic;
 } openosdx_setting_t;
 
+
+// Direct access to variables for faster performance
+extern openosdx_setting_t openosdx_setting;
+
+
 void setting_update(void);
 openosdx_setting_t* setting(void);
 void setting_init(void);

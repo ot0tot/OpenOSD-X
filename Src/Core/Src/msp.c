@@ -6,6 +6,7 @@
 #include "char_canvas.h"
 #include "uart_dma.h"
 #include "mspvtx.h"
+#include "setting.h"
 #include "msp.h"
 
 // --- MSP Protocol Defines ---
@@ -377,7 +378,7 @@ void msp_process_message(void)
                         if ( msp_set_osd_canvas_recv == false /*&& video_format != VIDEO_UNKNOWN*/ ){
                             DEBUG_PRINTF("MSP_DP_HEARTBEAT");
                             uint8_t data[2] = {COLUMN_SIZE,0};
-                            data[1] = (video_format == VIDEO_PAL) ? ROW_SIZE_PAL : ROW_SIZE_NTSC;
+                            data[1] = (setting()->videoFormat == VIDEO_PAL) ? ROW_SIZE_PAL : ROW_SIZE_NTSC;
                             msp_send_reply(MSP_SET_OSD_CANVAS, data, sizeof(data), msp_rx_message.version);
                         }
                     }

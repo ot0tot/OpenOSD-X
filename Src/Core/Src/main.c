@@ -114,19 +114,8 @@ static void MX_TIM4_Init(void);
 static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 
-typedef enum {
-    DETECT_UNKNOWN =0,
-    DETECT_HSYNC,
-    DETECT_VSYNC,
-    DETECT_EQUIVALENT,
-}DETECT_SYNC;
 
-VIDEO_FORMAT video_format = VIDEO_UNKNOWN;
-char *video_format_str[] = {
-    "UNKNOWN",
-    "NTSC",
-    "PAL"
-};
+#define VIDEO_FORMAT_STR    ((state != STATE_SYNC) ? "UNKNOWN": (setting()->videoFormat == VIDEO_PAL) ? "PAL" : "NTSC")
 
 typedef enum {
     FRAME_UNKNOWN=0,
@@ -154,8 +143,8 @@ char *state_str[] = {
     "STATE_DISABLE",
 };
 
-int32_t canvas_v_offset[]  ={0, CANVAS_V_OFFSET_NTSC, CANVAS_V_OFFSET_PAL};
-int32_t canvas_v[]         ={0, CANVAS_V_NTSC, CANVAS_V_PAL};
+int32_t canvas_v_offset[]  ={CANVAS_V_OFFSET_NTSC, CANVAS_V_OFFSET_PAL};
+int32_t canvas_v[]         ={CANVAS_V_NTSC, CANVAS_V_PAL};
 
 static uint16_t pluse_level_low = 1000;
 static uint16_t pluse_level_high = 0;
@@ -305,7 +294,7 @@ void sync_detect(DETECT_SYNC detect_sync)
         case DETECT_HSYNC:
             if (frame_odd_even == FRAME_UNKNOWN){
                 if (equivalent_pulse_count & 0x1){
-                    if (video_format == VIDEO_NTSC){
+                    if (setting()->videoFormat == VIDEO_NTSC){
                         frame_odd_even = FRAME_ODD;
                         video_line = 1;
                     }else{
@@ -313,7 +302,7 @@ void sync_detect(DETECT_SYNC detect_sync)
                         video_line = 0;
                     }
                 }else{
-                    if (video_format == VIDEO_NTSC){
+                    if (setting()->videoFormat == VIDEO_NTSC){
                         frame_odd_even = FRAME_EVEN;
                         video_line = 0;
                     }else{
@@ -372,9 +361,9 @@ void osd_dma(DETECT_SYNC detect_sync)
         charCanvasNext();
     }
 
-    int32_t canvas_line = video_line - canvas_v_offset[video_format];
+    int32_t canvas_line = video_line - canvas_v_offset[setting()->videoFormat];
 
-    if ( canvas_line >= 0 && canvas_line < canvas_v[video_format] ){
+    if ( canvas_line >= 0 && canvas_line < canvas_v[setting()->videoFormat] ){
 
         // 1. Stop TIM1
         TIM1->CR1 &= ~TIM_CR1_CEN;
@@ -419,7 +408,7 @@ void osd_dma(DETECT_SYNC detect_sync)
 
     int next_line = canvas_line + 2;
 
-    if ( next_line >= 0 && next_line < canvas_v[video_format] ){
+    if ( next_line >= 0 && next_line < canvas_v[setting()->videoFormat] ){
         #ifdef PIX_540
             SetLine(&dataBuffer[(next_line>>1) & 0x1][CANVAS_H_OFFSET], (uint8_t*)charCanvasGet(next_line/18), next_line % 18);
         #else
@@ -440,7 +429,6 @@ void sync_proc(void)
         return;
     }
     state_time += 5;
-
 
     switch(state){
         case STATE_LOST:
@@ -493,9 +481,9 @@ void sync_proc(void)
             }
             if (video_line_last != 0){;
                 if (video_line > 500 && video_line_last < 510) {        // NTSC (262-10)*2= 504
-                    video_format = VIDEO_NTSC;
+                    setting()->videoFormat = VIDEO_NTSC;     // ntsc
                 } else if (video_line > 600 && video_line < 620) {
-                    video_format = VIDEO_PAL;
+                    setting()->videoFormat = VIDEO_PAL;     // pal
                 }
             }
             break;
@@ -687,7 +675,7 @@ int main(void)
 
         sprintf(buf,"%s", "---VIDEO---");
         charCanvasWrite(1,0, (uint8_t*)buf, strlen(buf));
-        sprintf(buf,"LINE........%d (%s)", (int)video_line_last, video_format_str[video_format]);
+        sprintf(buf,"LINE........%d (%s)", (int)video_line_last, VIDEO_FORMAT_STR);
         charCanvasWrite(2,1, (uint8_t*)buf, strlen(buf));
         sprintf(buf,"SYNC-TH.....%04dMV (%d-%d)", (pluse_level_high+pluse_level_low)/2, pluse_level_low, pluse_level_high);
         charCanvasWrite(3,1, (uint8_t*)buf, strlen(buf));
@@ -736,7 +724,7 @@ int main(void)
         setLed(led_state);
         DEBUG_PRINTF("led_state=%d",led_state);
 
-        DEBUG_PRINTF("%s : %s(%d)", state_str[state], video_format_str[video_format], video_line_last);
+        DEBUG_PRINTF("%s : %s(%d)", state_str[state], VIDEO_FORMAT_STR, video_line_last);
         DEBUG_PRINTF("pluse_level %dmv(%d-%d)", (pluse_level_high+pluse_level_low)/2, pluse_level_high, pluse_level_low);
 //        DEBUG_PRINTF("IC1=%d IC2=%d", uwIC1Value, uwIC2Value);
 

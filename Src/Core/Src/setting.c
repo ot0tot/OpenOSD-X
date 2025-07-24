@@ -33,6 +33,8 @@ void setting_print(openosdx_setting_t *setting)
     DEBUG_PRINTF(" version:%d", setting->version);
     DEBUG_PRINTF(" channel:%d (%c%d)", setting->channel, getBandLetterByIdx(setting->channel/8), (setting->channel%8)+1);
     DEBUG_PRINTF(" powerIndex:%d", setting->powerIndex);
+    DEBUG_PRINTF(" videoFormat:%d", setting->videoFormat);
+    DEBUG_PRINTF(" vref_init:%d", setting->vref_init);
     
 
 }
