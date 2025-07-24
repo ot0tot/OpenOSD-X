@@ -50,14 +50,14 @@ typedef enum {
     };
 #endif
 
+// OpenOSD-X
 #define CAL_FREQ_SIZE 9
-#define CAL_DBM_SIZE 3
+#define CAL_DBM_SIZE 2
 uint16_t calFreqs[CAL_FREQ_SIZE] = {5600,	5650,	5700,	5750,	5800,	5850,	5900, 5950, 6000};
-uint8_t calDBm[CAL_DBM_SIZE] = {14, 20, 26};
+uint8_t calDBm[CAL_DBM_SIZE] = {14, 20};
 uint16_t calVpd[CAL_DBM_SIZE][CAL_FREQ_SIZE] = {
-    {575, 565, 555, 545, 560, 575, 595, 600, 600},
-    {1180, 1115, 1075, 1065, 1080, 1125, 1150, 1175, 1165},
-    {1450, 1450, 1450, 1455, 1465, 1460, 1460, 1450, 1445}
+    {1300,1330,1345,1400,1480,1590,1670,1710,1760},
+    {1910,1970,1980,2120,2270,2430,2540,2620,2750}
 };
 
 
@@ -83,16 +83,6 @@ void initVtx(void)
     initRtc6705();
 }
 
-
-void setVtx_go_pll_settle(void)
-{
-    vref = VREF_INIT_MV;
-    LL_DAC_ConvertData12RightAligned(DAC1, LL_DAC_CHANNEL_2, (uint32_t)vref);
-    rtc6705PowerAmpOff();
-    rtc6705WriteFrequency(vtx_freq);
-    next_state_timer = HAL_GetTick();
-    vtx_state = VTX_STATE_PLL_SETTLE;
-}
 
 void setVtx_vpd(uint16_t freq, uint16_t vpd)
 {
@@ -126,7 +116,7 @@ uint16_t bilinearInterpolation(uint16_t freq, uint8_t dB)
             break;
         }
     }
-    if (calDBmIndex <= CAL_DBM_SIZE){
+    if (calDBmIndex >= CAL_DBM_SIZE){
         calDBmIndex = 0;    // default
     }
 
@@ -139,6 +129,8 @@ uint16_t bilinearInterpolation(uint16_t freq, uint8_t dB)
 
     uint16_t fxy = fxy1 * (y2 - y) / (y2 - y1) + fxy2 * (y - y1) / (y2 - y1);
 
+    DEBUG_PRINTF("freq:%d dB:%d vpd_target:%d", freq, dB, fxy);
+
     return fxy;
 }
 
@@ -147,14 +139,9 @@ void setVtx(uint16_t freq, uint8_t dB)
     if (dB < 10){
         setVtx_vpd(freq, 0);
     }else if (dB >= 26){
-        setVtx_vpd(freq, 1500);
+        setVtx_vpd(freq, 3000);
     }else{
-//        setVtx_vpd(freq, bilinearInterpolation(freq, dB));
-//        setVtx_vpd(freq, 1100);     // 1.0v=10dBm
-//        setVtx_vpd(freq, 1200);     // 1.2v=15dBm
-//        setVtx_vpd(freq, 1450);     // 18dBm
-        setVtx_vpd(freq, 1000);
-//        setVtx_vpd(freq, 100);
+        setVtx_vpd(freq, bilinearInterpolation(freq, dB));
     }
 }
 

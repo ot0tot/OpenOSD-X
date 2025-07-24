@@ -25,14 +25,16 @@ const openosdx_setting_t flash_setting;
 
 
 
-void setting_print(openosdx_setting_t *setting)
+void setting_print(void)
 {
 #ifdef DEV_MODE
     UNUSED(setting);
 #endif
-    DEBUG_PRINTF(" version:%d", setting->version);
-    DEBUG_PRINTF(" channel:%d (%c%d)", setting->channel, getBandLetterByIdx(setting->channel/8), (setting->channel%8)+1);
-    DEBUG_PRINTF(" powerIndex:%d", setting->powerIndex);
+    DEBUG_PRINTF(" version:%d", openosdx_setting.version);
+    DEBUG_PRINTF(" channel:%d (%c%d)", openosdx_setting.channel, getBandLetterByIdx(openosdx_setting.channel/8), (openosdx_setting.channel%8)+1);
+    DEBUG_PRINTF(" powerIndex:%d", openosdx_setting.powerIndex);
+    DEBUG_PRINTF(" videoFormat:%d", openosdx_setting.videoFormat);
+    DEBUG_PRINTF(" vref_init:%d", openosdx_setting.vref_init);
     
 
 }
@@ -53,7 +55,7 @@ void setting_update(void)
             flash_write((uint32_t)&flash_setting, (uint8_t*)&openosdx_setting, sizeof(openosdx_setting_t));
             memcpy(&openosdx_setting_backup, &flash_setting, sizeof(openosdx_setting_t));
             DEBUG_PRINTF("vtx_update");
-            setting_print(&openosdx_setting);
+            setting_print();
         }
     }
 }
@@ -78,6 +80,6 @@ void setting_init(void)
     }
 
     DEBUG_PRINTF("vtx_init");
-    setting_print(&openosdx_setting);
+    setting_print();
 }
 

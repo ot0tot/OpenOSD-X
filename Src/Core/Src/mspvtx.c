@@ -37,10 +37,10 @@
 #define VTX_TABLE_SHOULD_BE_CLEARED 1
 #define VTX_TABLE_NEW_BAND_COUNT    6
 #define CHANNEL_COUNT 8
-#define VTX_TABLE_NEW_POWER_COUNT   5
+#define VTX_TABLE_NEW_POWER_COUNT   4
 #define FREQ_TABLE_SIZE 48
 #define IS_FACTORY_BAND                 0
-#define SA_NUM_POWER_LEVELS         5
+#define SA_NUM_POWER_LEVELS         VTX_TABLE_NEW_POWER_COUNT
 #define RACE_MODE                       2
 #define RACE_MODE_POWER                 14 // dBm
 #define POWER_LEVEL_LABEL_LENGTH    3
@@ -118,13 +118,14 @@ uint16_t channelFreqTable[FREQ_TABLE_SIZE] = {
     5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917, // R
     5333, 5373, 5413, 5453, 5493, 5533, 5573, 5613  // L
 };
-uint8_t saPowerLevelsLut[SA_NUM_POWER_LEVELS] = {1, RACE_MODE, 14, 20, 26};
+//uint8_t saPowerLevelsLut[SA_NUM_POWER_LEVELS] = {1, RACE_MODE, 14, 20, 26};
+uint8_t saPowerLevelsLut[SA_NUM_POWER_LEVELS] = {1, RACE_MODE, 14, 20};
 
 uint8_t saPowerLevelsLabel[SA_NUM_POWER_LEVELS * POWER_LEVEL_LABEL_LENGTH] = {'0', ' ', ' ',
                                                                               'R', 'C', 'E',
                                                                               '2', '5', ' ',
-                                                                              '1', '0', '0',
-                                                                              '4', '0', '0'};
+                                                                              '1', '0', '0'};
+//                                                                              '4', '0', '0'};
 
 uint8_t pitMode = 0;
 
@@ -336,6 +337,9 @@ void mspvtx_VtxConfig(uint8_t *packet)
 {
     mspVtxConfigStruct *vtxconfig = (void*)packet;
 
+    uint8_t powerIndex = vtxconfig->power > 0 ? vtxconfig->power - 1 : 0;
+    uint8_t channelIndex = ((vtxconfig->band - 1) * 8) + (vtxconfig->channel - 1);
+
     if (mspState == MSP_STATE_GET_VTX_TABLE_SIZE)
     {
         // Temporarily store initial settings.
@@ -343,8 +347,8 @@ void mspvtx_VtxConfig(uint8_t *packet)
         if (vtxconfig->lowPowerDisarm) {
             vtxconfig->power = 0;
         }
-        setting()->powerIndex = vtxconfig->power;
-        setting()->channel = ((vtxconfig->band - 1) * 8) + (vtxconfig->channel - 1);
+        setting()->powerIndex = powerIndex;
+        setting()->channel = channelIndex;
 
         // Check if the FC's VTX table size matches OpenVTx's definition.
         if (vtxconfig->bands == getFreqTableBands() &&
