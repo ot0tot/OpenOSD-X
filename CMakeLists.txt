@@ -4,11 +4,13 @@ set(CMAKE_PROJECT_NAME openosd-x)
 
 option(USE_RTT "Enable SEGGER RTT support" OFF)
 
+# Add options to select resolution mode
+option(RESOLUTION_HD "Build with HD resolution" OFF)
+
 # Setup compiler settings
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
-
 
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -17,6 +19,16 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type")
 endif()
 
+# Set compile definition and suffix only if RESOLUTION_HD is ON
+if(RESOLUTION_HD)
+    message(STATUS "Resolution HD")
+    add_compile_definitions(RESOLUTION_HD)
+    set(HEX_SUFFIX "hd")
+else()
+    # No resolution macro defined
+    message(STATUS "Resolution SD")
+    set(HEX_SUFFIX "sd")
+endif()
 
 # Include toolchain file
 include("cmake/gcc-arm-none-eabi.cmake")
@@ -101,12 +113,26 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     # Add defined libraries
 )
 
-# Generate hex and bin files
-set(HEX_FILE ${PROJECT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.hex)
-set(BIN_FILE ${PROJECT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin)
+# Define output file names
+set(BIN_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${HEX_SUFFIX}.bin")
+set(HEX_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${HEX_SUFFIX}.hex")
+set(HEXTM1_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${HEX_SUFFIX}_temp1.hex")
+set(HEXTM2_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${HEX_SUFFIX}_temp2.hex")
+set(HEXHEADER_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${HEX_SUFFIX}_header.hex")
+
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${PROJECT_NAME}> ${HEX_FILE}
         COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${PROJECT_NAME}> ${BIN_FILE}
-        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${PROJECT_NAME}>)
+        COMMAND ${CMAKE_OBJCOPY} -Oihex --gap-fill=0xFF $<TARGET_FILE:${PROJECT_NAME}> ${HEXTM1_FILE}
+        # Calculate CRC and create header with size(91K=0x16E00)
+        COMMAND srec_cat ${HEXTM1_FILE} -Intel -crop 0x08004200 0x0801B000 -STM32 0x08004004 -generate 0x08004000 0x08004004 -constant-l-e 0x16E00 4 -output ${HEXTM2_FILE} -Intel
+        COMMAND srec_cat ${HEXTM2_FILE} -Intel -crop 0x08004000 0x08004008 -output ${HEXHEADER_FILE} -Intel
+        # Merge with original file
+        COMMAND srec_cat ${HEXHEADER_FILE} -Intel ${HEXTM1_FILE} -Intel -output ${HEX_FILE} -Intel
+        # Delete temp files
+	    COMMAND ${CMAKE_COMMAND} -E rm -f ${HEXTM1_FILE} ${HEXTM2_FILE} ${HEXHEADER_FILE}
+		)
+
+
+
 

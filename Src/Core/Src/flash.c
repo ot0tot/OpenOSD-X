@@ -28,6 +28,7 @@ bool flash_erase(uint32_t addr, uint16_t size)
 }
 
 
+__attribute__((section (".ccmram_code"), optimize("O2")))
 bool flash_write(uint32_t addr, uint8_t *data, uint16_t size)
 {
     HAL_FLASH_Unlock();

@@ -3,8 +3,11 @@ name: build
 env:
   BUILD_TYPE: Release
 
-# Triggers the workflow on push or pull request events
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
 
 jobs:
   build:
@@ -18,23 +21,38 @@ jobs:
       with:
         release: '14.2.Rel1' # <-- The compiler release to use
 
-    - name : Create build directory
-      run: mkdir -p build
+    - name: Install srec_cat
+      run: sudo apt-get update && sudo apt-get install -y srecord
 
-    - name: build
-      working-directory: ./build  
+    # SD Build
+    - name: Create build directory (sd)
+      run: mkdir -p build_sd
+
+    - name: Build (default)
+      working-directory: ./build_sd
       run: |
         cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
         make -j4
 
-    - name: Download Artifacts HEX
+    - name: Upload HEX artifact (sd)
       uses: actions/upload-artifact@v4
       with:
-        name: "Download artifacts - HEX"
-        path: ${{runner.workspace}}/OpenOSD-X/build/*.hex
+        name: "firmware_sd_hex"
+        path: build_sd/*.hex
 
-    - name: Download Artifacts BIN
+    # HD Build
+    - name: Create build directory (hd)
+      run: mkdir -p build_hd
+
+    - name: Build (hd)
+      working-directory: ./build_hd
+      run: |
+        cmake -DRESOLUTION_HD=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+        make -j4
+
+    - name: Upload HEX artifact (hd)
       uses: actions/upload-artifact@v4
       with:
-        name: "Download artifacts - BIN"
-        path: ${{runner.workspace}}/OpenOSD-X/build/*.bin
+        name: "firmware_hd_hex"
+        path: build_hd/*.hex
+

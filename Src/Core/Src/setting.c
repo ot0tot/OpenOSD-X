@@ -20,8 +20,7 @@ const openosdx_setting_t openosdx_setting_default = {
 openosdx_setting_t openosdx_setting, openosdx_setting_backup;
 
 __attribute__((section(".setting")))
-const openosdx_setting_t flash_setting;
-//#define FLASH_SETTING   0x0801f000
+const openosdx_setting_t flash_setting = {0xffff,0xffff,0xffff,0xffff,0xffff,0xffff};
 
 
 
