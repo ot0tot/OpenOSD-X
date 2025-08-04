@@ -37,7 +37,7 @@ jobs:
     - name: Upload HEX artifact (sd)
       uses: actions/upload-artifact@v4
       with:
-        name: "firmware_default_hex"
+        name: "firmware_sd_hex"
         path: build_sd/*.hex
 
     # HD Build
