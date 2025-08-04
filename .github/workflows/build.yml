@@ -37,10 +37,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: "Download artifacts - HEX"
-        path: ${{runner.workspace}}/OpenOSD-X/build/*.hex
+        path: build/*.hex
 
-    - name: Download Artifacts BIN
-      uses: actions/upload-artifact@v4
-      with:
-        name: "Download artifacts - BIN"
-        path: ${{runner.workspace}}/OpenOSD-X/build/*.bin
