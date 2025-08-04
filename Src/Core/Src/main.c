@@ -411,7 +411,7 @@ void osd_dma(DETECT_SYNC detect_sync)
     int next_line = canvas_line + 2;
 
     if ( next_line >= 0 && next_line < canvas_v[setting()->videoFormat] ){
-        #ifdef PIX_540
+        #ifdef RESOLUTION_HD
             SetLine(&dataBuffer[(next_line>>1) & 0x1][CANVAS_H_OFFSET], (uint8_t*)charCanvasGet(next_line/18), next_line % 18);
         #else
             SetLine(&dataBuffer[(next_line>>1) & 0x1][CANVAS_H_OFFSET], (uint8_t*)charCanvasGet((next_line>>1)/18), (next_line>>1) % 18);

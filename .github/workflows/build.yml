@@ -24,18 +24,35 @@ jobs:
     - name: Install srec_cat
       run: sudo apt-get update && sudo apt-get install -y srecord
 
-    - name : Create build directory
-      run: mkdir -p build
+    # Default Build
+    - name: Create build directory (default)
+      run: mkdir -p build_default
 
-    - name: build
-      working-directory: ./build  
+    - name: Build (default)
+      working-directory: ./build_default
       run: |
         cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
         make -j4
 
-    - name: Download Artifacts HEX
+    - name: Upload HEX artifact (default)
       uses: actions/upload-artifact@v4
       with:
-        name: "Download artifacts - HEX"
-        path: build/*.hex
+        name: "firmware_default_hex"
+        path: build_default/*.hex
+
+    # HD Build
+    - name: Create build directory (hd)
+      run: mkdir -p build_hd
+
+    - name: Build (hd)
+      working-directory: ./build_hd
+      run: |
+        cmake -DRESOLUTION_HD=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+        make -j4
+
+    - name: Upload HEX artifact (hd)
+      uses: actions/upload-artifact@v4
+      with:
+        name: "firmware_hd_hex"
+        path: build_hd/*.hex
 

@@ -47,9 +47,7 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
-//#define PIX_540
-
-#ifdef PIX_540
+#ifdef RESOLUTION_HD
 
 #define ROW_SIZE_NTSC 26
 #define ROW_SIZE_PAL 32

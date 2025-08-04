@@ -686,7 +686,7 @@ void videoGen1stData(uint16_t *buf, uint16_t size, uint16_t line)
 
     int32_t canvas_line = (int32_t)vg_vcanvas_count - canvas_v_offset[setting()->videoFormat];
     if ( canvas_line >= 0 && canvas_line < canvas_v[setting()->videoFormat] ){
-#ifdef PIX_540
+#ifdef RESOLUTION_HD
             setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(canvas_line/18), canvas_line % 18, 0, hpos2nd);
 #else
             UNUSED(line);
@@ -705,7 +705,7 @@ void videoGen2ndData(uint16_t *buf, uint16_t size, uint16_t line)
     uint16_t cnt = 0;
     int32_t canvas_line = (int32_t)vg_vcanvas_count - canvas_v_offset[setting()->videoFormat];
     if ( canvas_line >= 0 && canvas_line < canvas_v[setting()->videoFormat] ){
-#ifdef PIX_540
+#ifdef RESOLUTION_HD
         setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(canvas_line/18), canvas_line % 18, hpos2nd, CANVAS_H_R - hpos2nd);
 #else
         (void)line;
