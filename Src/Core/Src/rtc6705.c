@@ -47,16 +47,6 @@ void rtc6705readRegister(uint8_t addr, uint32_t *data)
 uint32_t initRtc6705(void)
 {
     rtc6705writeRegister(StateRegister, 0);
-#if 0
-    while(1){
-        uint32_t rx;
-        rtc6705readRegister(StateRegister, &rx);
-        if ((rx & 0x7) == 0x2){
-            break;
-        }
-    }
-#endif
-
     return 0;
 }
 

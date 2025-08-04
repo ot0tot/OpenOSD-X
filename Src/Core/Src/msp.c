@@ -290,26 +290,26 @@ bool msp_parse_char(uint8_t c)
                 if (msp_rx_message.version == MSP_V1) {
                     calculated_checksum = msp_calculate_checksum_v1(&msp_rx_message.buffer[3], msp_rx_message.data_size + 2);
                 } else {
-#if 1
-        DEBUG_PRINTTIMESTAMP();
-        DEBUG_PRINTRAW("rx_v2(%04x):", msp_rx_message.command);
-        for (int x=0; x<msp_rx_message.data_size + msp_rx_message.payload_offset; x++){
-            DEBUG_PRINTRAW(" %02x", msp_rx_message.buffer[x]);
-        }
-        DEBUG_PRINTRAW("\n");
-#endif
-
                     calculated_checksum = msp_calculate_checksum_v2(&msp_rx_message.buffer[3], msp_rx_message.data_size + 5);
+#if 0
+                    DEBUG_PRINTTIMESTAMP();
+                    DEBUG_PRINTRAW("rx_v2(%04x):", msp_rx_message.command);
+                    for (int x=0; x<msp_rx_message.data_size + msp_rx_message.payload_offset; x++){
+                        DEBUG_PRINTRAW(" %02x", msp_rx_message.buffer[x]);
+                    }
+                    DEBUG_PRINTRAW("\n");
+#endif
                 }
 
                 if (calculated_checksum == c) {
+
                     msp_process_message();
                     ret = true; // Message processed successfully
                 } else {
                     // Checksum error
                     DEBUG_PRINTF("Checksum error");
 
-#if 1
+#if 0
         DEBUG_PRINTTIMESTAMP();
         DEBUG_PRINTRAW("rx_err(%04x):", msp_rx_message.command);
         for (int x=0; x<msp_rx_message.data_size + msp_rx_message.payload_offset; x++){
@@ -427,10 +427,13 @@ void msp_process_message(void)
             break;
 
         case MSP_REBOOT:
-//            msp_send_reply(MSP_REBOOT, NULL, 0, msp_rx_message.version); // Acknowledge before rebooting
-            // Add a small delay if fc_send_buffer is not guaranteed to complete immediately
-            // for (volatile int i=0; i<10000; i++); // Small delay
-//            system_reboot();
+            LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+            LL_PWR_EnableBkUpAccess();
+            LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
+            LL_RCC_EnableRTC();
+            TAMP->BKP0R = BOOTLOADER_DFU_MAGIC;
+            __disable_irq(); 
+            NVIC_SystemReset();
             break;
 
         // Handle other MSP commands if necessary (e.g., MSP_API_VERSION for compatibility checks)

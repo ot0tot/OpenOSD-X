@@ -1,0 +1,25 @@
+@startuml OpenOSD-X Application -> Bootloader
+title OpenOSD-X start bootloader
+
+hide footbox
+
+Participant PC as PC
+Participant "FC(Betaflight)" as FC
+Participant OpenOSD_X as OOX
+
+autonumber
+
+
+rnote over OOX : APP
+
+rnote over PC : python
+PC -> FC : CLI:serialpassthrough
+rnote over FC : PASSTHROUGH
+PC -> OOX : MSP_REBOOT
+rnote over OOX : BOOTLOADER
+rnote over PC : ST-Programmer
+
+PC <-> OOX : firmupdate
+
+
+@enduml

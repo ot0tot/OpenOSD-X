@@ -9,7 +9,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
-
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "No build type selected, defaulting to Release")
@@ -103,10 +102,21 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
 # Generate hex and bin files
 set(HEX_FILE ${PROJECT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.hex)
+set(HEXTM1_FILE ${PROJECT_BINARY_DIR}/${CMAKE_PROJECT_NAME}_temp1.hex)
+set(HEXTM2_FILE ${PROJECT_BINARY_DIR}/${CMAKE_PROJECT_NAME}_temp2.hex)
+set(HEXHEADER_FILE ${PROJECT_BINARY_DIR}/${CMAKE_PROJECT_NAME}_header.hex)
 set(BIN_FILE ${PROJECT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin)
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${PROJECT_NAME}> ${HEX_FILE}
         COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${PROJECT_NAME}> ${BIN_FILE}
-        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${PROJECT_NAME}>)
+        COMMAND ${CMAKE_OBJCOPY} -Oihex --gap-fill=0xFF $<TARGET_FILE:${PROJECT_NAME}> ${HEXTM1_FILE}
+		# Calculate CRC and create header with size(91K=0x16E00)
+        COMMAND srec_cat ${HEXTM1_FILE} -Intel -crop 0x08004200 0x0801B000 -STM32 0x08004004 -generate 0x08004000 0x08004004 -constant-l-e 0x16E00 4 -output ${HEXTM2_FILE} -Intel
+        COMMAND srec_cat ${HEXTM2_FILE} -Intel -crop 0x08004000 0x08004008 -output ${HEXHEADER_FILE} -Intel
+		# Merge with original file
+        COMMAND srec_cat ${HEXHEADER_FILE} -Intel ${HEXTM1_FILE} -Intel -output ${HEX_FILE} -Intel
+		)
+
+
+
 

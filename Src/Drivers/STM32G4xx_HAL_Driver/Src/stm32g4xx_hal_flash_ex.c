@@ -534,6 +534,7 @@ void HAL_FLASHEx_DisableDebugger(void)
   * @note   (*) availability depends on devices
   * @retval None
   */
+__attribute__((section (".ccmram_code"), optimize("O2")))
 static void FLASH_MassErase(uint32_t Banks)
 {
 #if defined (FLASH_OPTR_DBANK)
@@ -579,6 +580,7 @@ static void FLASH_MassErase(uint32_t Banks)
   * @note   (*) availability depends on devices
   * @retval None
   */
+__attribute__((section (".ccmram_code"), optimize("O2")))
 void FLASH_PageErase(uint32_t Page, uint32_t Banks)
 {
   /* Check the parameters */

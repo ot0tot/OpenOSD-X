@@ -24,31 +24,18 @@ typedef enum {
 
 }VTX_STATE;
 
-#if 0
-    #define CAL_FREQ_SIZE 9
-    #define CAL_DBM_SIZE 17
-    uint16_t calFreqs[CAL_FREQ_SIZE] = {5600,	5650,	5700,	5750,	5800,	5850,	5900, 5950, 6000};
-    uint8_t calDBm[CAL_DBM_SIZE] = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26};
-    uint16_t calVpd[CAL_DBM_SIZE][CAL_FREQ_SIZE] = {
-        {415, 375, 375, 380, 380, 380, 395, 390, 400},
-        {420, 420, 400, 400, 405, 425, 430, 440, 435},
-        {470, 455, 445, 445, 455, 465, 485, 490, 490},
-        {525, 510, 490, 490, 500, 515, 540, 550, 545},
-        {575, 565, 555, 545, 560, 575, 595, 600, 600},
-        {640, 630, 610, 610, 625, 645, 665, 675, 670},
-        {730, 710, 685, 680, 690, 725, 750, 755, 755},
-        {805, 785, 755, 755, 770, 805, 830, 840, 835},
-        {905, 875, 850, 845, 860, 895, 910, 930, 935},
-        {1020, 995, 955, 945, 960, 995, 1030, 1045, 1055},
-        {1180, 1115, 1075, 1065, 1080, 1125, 1150, 1175, 1165},
-        {1335, 1260, 1230, 1210, 1235, 1260, 1295, 1310, 1320},
-        {1415, 1395, 1355, 1355, 1355, 1390, 1395, 1400, 1390},
-        {1440, 1430, 1430, 1430, 1435, 1435, 1440, 1430, 1425},
-        {1440, 1440, 1450, 1445, 1450, 1450, 1450, 1440, 1435},
-        {1450, 1450, 1450, 1455, 1450, 1450, 1450, 1450, 1435},
-        {1450, 1450, 1450, 1455, 1465, 1460, 1460, 1450, 1445}
-    };
-#endif
+char * vtxstate_str[] =
+{
+    "VTX_STATE_INIT",
+    "VTX_STATE_INIT_RTC6705",
+    "VTX_STATE_PLL_SETTLE",
+    "VTX_STATE_IDLE",
+    "VTX_STATE_CALIB_START",
+    "VTX_STATE_CALIB_DELAY",
+    "VTX_STATE_ADC_ENABLE",
+    "VTX_STATE_ADC_CONVERSION",
+    "VTX_STATE_DISABLE"
+};
 
 // OpenOSD-X
 #define CAL_FREQ_SIZE 9
@@ -64,6 +51,7 @@ uint16_t calVpd[CAL_DBM_SIZE][CAL_FREQ_SIZE] = {
 uint16_t target_vpd = 0;
 uint16_t vpd = 0;
 int32_t vref = 0;
+int32_t vpd_error;
 uint16_t vtx_freq = 0;
 uint32_t next_state_timer = 0;
 VTX_STATE vtx_state = VTX_STATE_INIT;
@@ -169,7 +157,7 @@ void vrefUpdate(void)
 {
     LL_ADC_ClearFlag_EOC(ADC2);
     vpd = ( LL_ADC_REG_ReadConversionData12(ADC2) * 3300) / 65535;
-    int32_t vpd_error = (int32_t)vpd - target_vpd;
+    vpd_error = (int32_t)vpd - target_vpd;
     if (vpd_error < -100){
         vref += 10;
     }else if (vpd_error < 0){
@@ -185,11 +173,11 @@ void vrefUpdate(void)
     vref = (vref > 3300) ? 3300: vref;
     LL_DAC_ConvertData12RightAligned(DAC1, LL_DAC_CHANNEL_2, (uint32_t)(0xfff*vref)/3300);
 
-    static uint8_t debug_count=0;
-    debug_count = (debug_count +1) % 10;
-    if (!debug_count){
-        DEBUG_PRINTF("vpd:%d target:%d error:%d vref:%d vtx_freq:%d", vpd,  target_vpd, vpd_error, vref, vtx_freq);
-    }
+}
+
+void debuglogVtx(void)
+{
+    DEBUG_PRINTF("%s vpd:%d target:%d error:%d vref:%d vtx_freq:%d", vtxstate_str[vtx_state], vpd,  target_vpd, vpd_error, vref, vtx_freq);
 }
 
 void procVtx(void)
@@ -257,4 +245,5 @@ void procVtx(void)
             }
             break;
     }
+
 }

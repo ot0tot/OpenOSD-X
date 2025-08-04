@@ -36,6 +36,9 @@ extern "C" {
 #include "stm32g4xx_ll_dac.h"
 #include "stm32g4xx_ll_usart.h"
 #include "stm32g4xx_ll_dac.h"
+#include "stm32g4xx_ll_pwr.h"
+#include "stm32g4xx_ll_rcc.h"
+#include "stm32g4xx_ll_bus.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -65,7 +68,7 @@ extern "C" {
 #define COLUMN_SIZE 30
 #define CANVAS_H_R  360
 #define CANVAS_H_OFFSET   48       // 4pix(1byte) aligne
-#define PIX_PERIOD 21               // period=21+1=22
+#define PIX_PERIOD 22               // period=22+1=23
 #define VIDEO_GEN_LINE_NTSC  492    // 170MHz/15734Hz/22=492  ... mod4=0
 #define VIDEO_GEN_LINE_PAL   492    // 170MHz/15625Hz/22=492 ... mod4=0
 
@@ -166,6 +169,8 @@ void intHsyncFallEdge(void);
 #define BLK 0x138800ed  // VINP3
 #define WHI 0x138800e1  // VINP0
 #define TRS 0x138800e9  // VINP2
+
+#define BOOTLOADER_DFU_MAGIC    0x8FA3D62C
 
 /* USER CODE BEGIN Private defines */
 
