@@ -203,6 +203,17 @@ void sync_detect(DETECT_SYNC detect_sync);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void rebootDfu(void)
+{
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+    LL_PWR_EnableBkUpAccess();
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
+    LL_RCC_EnableRTC();
+    TAMP->BKP0R = BOOTLOADER_DFU_MAGIC;
+    __disable_irq(); 
+    NVIC_SystemReset();
+}
+
 int __io_putchar(uint8_t ch) {
     return ITM_SendChar(ch);
 }

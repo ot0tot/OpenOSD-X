@@ -427,13 +427,7 @@ void msp_process_message(void)
             break;
 
         case MSP_REBOOT:
-            LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
-            LL_PWR_EnableBkUpAccess();
-            LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
-            LL_RCC_EnableRTC();
-            TAMP->BKP0R = BOOTLOADER_DFU_MAGIC;
-            __disable_irq(); 
-            NVIC_SystemReset();
+            rebootDfu();
             break;
 
         // Handle other MSP commands if necessary (e.g., MSP_API_VERSION for compatibility checks)
