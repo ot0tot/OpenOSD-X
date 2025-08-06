@@ -125,11 +125,21 @@ static void cliOsdEnable(const char *cmdName, char *cmdline)
 }
 
 
+static void cliRebootDfu(const char *cmdName, char *cmdline)
+{
+    UNUSED(cmdName);
+    UNUSED(cmdline);
+
+    rebootDfu();
+}
+
+
 static void cliHelp(const char *cmdName, char *cmdline);
 const clicmd_t cmdTable[] = {
     CLI_COMMAND_DEF("status", "show status", NULL, cliStatus),
     CLI_COMMAND_DEF("vtx_set", "set vtx params", "<freq-MHz> <vpd-mV>", cliVtxtest),
     CLI_COMMAND_DEF("osd_en", "osd enable", "<0:off/1:on>", cliOsdEnable),
+    CLI_COMMAND_DEF("reboot_dfu", "reboot and dfu", "", cliRebootDfu),
     CLI_COMMAND_DEF("help", "display command help", "[search string]", cliHelp)
 };
 
