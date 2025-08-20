@@ -514,7 +514,6 @@ void sync_proc(void)
 
 
 
-#if 0
 __attribute__((section (".ccmram_code"), optimize("O2")))
 bool writeFlashFont(uint16_t addr, uint8_t *data)
 {
@@ -522,13 +521,14 @@ bool writeFlashFont(uint16_t addr, uint8_t *data)
 
     HAL_FLASH_Unlock();
     __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_OPTVERR);
-    if ( addr == 0 ){
+    if ( (addr & 0x1f) == 0 ){
         // erase
-        DEBUG_PRINTF("erase start");
+        uint32_t erase_addr = (uint32_t)&font[addr][0];
+        DEBUG_PRINTF("erase start 0x%x", erase_addr);
         static FLASH_EraseInitTypeDef EraseInitStruct;
         EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
-        EraseInitStruct.Page        = GET_FLASH_PAGE((uint32_t)&font[0]);
-        EraseInitStruct.NbPages     = (sizeof(font) / FLASH_PAGE_SIZE) + 1;
+        EraseInitStruct.Page        = GET_FLASH_PAGE(erase_addr);
+        EraseInitStruct.NbPages     = 1;
         uint32_t PageError = 0;
         if (HAL_FLASHEx_Erase(&EraseInitStruct, &PageError) != HAL_OK){
             ;
@@ -558,7 +558,6 @@ void enableOSD(bool en)
     osd_ebable = en;
 }
 
-#endif
 
 
 
