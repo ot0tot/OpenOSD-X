@@ -16,6 +16,7 @@
 #define MSP_DIRECTION_OUT '<' // To FC
 #define MSP_DIRECTION_IN '>'  // From FC
 
+
 // Common MSP Command IDs (ensure these values are correct as per Betaflight source)
 #define MSP_API_VERSION 1
 #define MSP_FC_VARIANT 2
@@ -31,10 +32,19 @@
 // For this example, let's assume they are direct MSP commands for simplicity of the initial structure,
 // but typically DisplayPort OSD commands are encapsulated.
 
-#define MSP_DP_HEARTBEAT 0 // User provided
-#define MSP_DP_CLEAR_SCREEN 2 // User provided
-#define MSP_DP_WRITE_STRING 3 // User provided
-#define MSP_DP_DRAW_SCREEN 4  // User provided
+// MSP Display Port commands
+typedef enum {
+    MSP_DP_HEARTBEAT = 0,       // Release the display after clearing and updating
+    MSP_DP_RELEASE = 1,         // Release the display after clearing and updating
+    MSP_DP_CLEAR_SCREEN = 2,    // Clear the display
+    MSP_DP_WRITE_STRING = 3,    // Write a string at given coordinates
+    MSP_DP_DRAW_SCREEN = 4,     // Trigger a screen draw
+    MSP_DP_OPTIONS = 5,         // Not used by Betaflight. Reserved by Ardupilot and INAV
+    MSP_DP_SYS = 6,             // Display system element displayportSystemElement_e at given coordinates
+    MSP_DP_FONTCHAR_WRITE = 7,  // New OSD chip works over MSP, enables font write over MSP
+    MSP_DP_COUNT,
+} displayportMspCommand_e;
+
 
 #define MSP_BUFFER_SIZE 256 // Maximum MSP message size
 
@@ -399,6 +409,10 @@ void msp_process_message(void)
 
                 case MSP_DP_DRAW_SCREEN:
                     charCanvasDraw();
+                    break;
+                case MSP_DP_FONTCHAR_WRITE:
+                    DEBUG_PRINTF("MSP_DP_FONTCHAR_WRITE");
+                    writeFlashFont(msp_rx_message.buffer[ msp_rx_message.payload_offset +2]<<8 | msp_rx_message.buffer[ msp_rx_message.payload_offset +1], &msp_rx_message.buffer[ msp_rx_message.payload_offset +4]);
                     break;
             }
             break;
