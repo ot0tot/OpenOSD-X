@@ -37,17 +37,30 @@ char * vtxstate_str[] =
     "VTX_STATE_DISABLE"
 };
 
-// OpenOSD-X
 #define CAL_FREQ_SIZE 9
 #define CAL_DBM_SIZE 2
-uint16_t calFreqs[CAL_FREQ_SIZE] = {5600,	5650,	5700,	5750,	5800,	5850,	5900, 5950, 6000};
-uint8_t calDBm[CAL_DBM_SIZE] = {14, 20};
-uint16_t calVpd[CAL_DBM_SIZE][CAL_FREQ_SIZE] = {
-    {1300,1330,1345,1400,1480,1590,1670,1710,1760},
-    {1910,1970,1980,2120,2270,2430,2540,2620,2750}
+typedef struct vpd_table_def {
+    char magic[4];
+    uint16_t calFreqs[CAL_FREQ_SIZE];
+    uint8_t calDBm[CAL_DBM_SIZE];
+    uint16_t calVpd[CAL_DBM_SIZE][CAL_FREQ_SIZE];
+} vpd_table_t;
+
+__attribute__((section(".vpdtable")))
+const volatile vpd_table_t adj_vpdtable;
+
+// OpenOSD-X
+const vpd_table_t vpd_table = {
+    .calFreqs = {5600,	5650,	5700,	5750,	5800,	5850,	5900, 5950, 6000},
+    .calDBm = {14, 20},
+    .calVpd = {
+        {1300,1330,1345,1400,1480,1590,1670,1710,1760},
+        {1910,1970,1980,2120,2270,2430,2540,2620,2750}
+    }
 };
 
 
+vpd_table_t *vpdt = (void*)&vpd_table;
 uint16_t target_vpd = 0;
 uint16_t vpd = 0;
 int32_t vref = 0;
@@ -64,6 +77,14 @@ void initVtx(void)
 {
     target_vpd = 0;
     vtx_freq = 0;
+
+    // Check if there is an adjustment table.
+    if ( adj_vpdtable.magic[0] == 'V' && 
+        adj_vpdtable.magic[1] == 'P' && 
+        adj_vpdtable.magic[2] == 'D' && 
+        adj_vpdtable.magic[3] == 'T'){
+            vpdt = (void*)&adj_vpdtable;
+    }
 
     vtx_state = VTX_STATE_INIT;
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_2);
@@ -94,13 +115,13 @@ uint16_t bilinearInterpolation(uint16_t freq, uint8_t dB)
     freq = (freq > 6000) ? 6000 : freq;
 
     for (calFreqsIndex = 0; calFreqsIndex < (CAL_FREQ_SIZE - 1); calFreqsIndex++){
-        if (freq < calFreqs[calFreqsIndex + 1]){
+        if (freq < vpdt->calFreqs[calFreqsIndex + 1]){
             break;
         }
     }
 
     for (calDBmIndex = 0; calDBmIndex < CAL_DBM_SIZE; calDBmIndex++){
-        if (dB == calDBm[calDBmIndex]){
+        if (dB == vpdt->calDBm[calDBmIndex]){
             break;
         }
     }
@@ -109,11 +130,11 @@ uint16_t bilinearInterpolation(uint16_t freq, uint8_t dB)
     }
 
     float y = freq;
-    float y1 = calFreqs[calFreqsIndex];
-    float y2 = calFreqs[calFreqsIndex + 1];
+    float y1 = vpdt->calFreqs[calFreqsIndex];
+    float y2 = vpdt->calFreqs[calFreqsIndex + 1];
 
-    float fxy1 = calVpd[calDBmIndex][calFreqsIndex];
-    float fxy2 = calVpd[calDBmIndex][calFreqsIndex + 1];
+    float fxy1 = vpdt->calVpd[calDBmIndex][calFreqsIndex];
+    float fxy2 = vpdt->calVpd[calDBmIndex][calFreqsIndex + 1];
 
     uint16_t fxy = fxy1 * (y2 - y) / (y2 - y1) + fxy2 * (y - y1) / (y2 - y1);
 
@@ -177,7 +198,15 @@ void vrefUpdate(void)
 
 void debuglogVtx(void)
 {
-    DEBUG_PRINTF("%s vpd:%d target:%d error:%d vref:%d vtx_freq:%d", vtxstate_str[vtx_state], vpd,  target_vpd, vpd_error, vref, vtx_freq);
+    DEBUG_PRINTF("%s vpd:%d target:%d error:%d vref:%d vtx_freq:%d %s", 
+        vtxstate_str[vtx_state], 
+        vpd,  
+        target_vpd, 
+        vpd_error, 
+        vref, 
+        vtx_freq,
+        (vpdt == &adj_vpdtable) ? "adj_vpdtable" : ""
+        );
 }
 
 void procVtx(void)
