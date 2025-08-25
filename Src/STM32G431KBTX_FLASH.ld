@@ -107,6 +107,14 @@ SECTIONS
   } >FLASH_SETTING
 /* Setting */
 
+/* vpdtable */
+  .setting (NOLOAD) :  {
+    . = ALIGN(4);
+    _vpdtable = .;        /* define a global symbols at start */
+    *(.vpdtable)
+  } >FLASH_VPDTABLE
+/* vpdtable */
+
   /* The program code and other data into "FLASH" Rom type memory */
   .text :
   {
