@@ -9,6 +9,27 @@ VPD TABLE (BREAKOUTBOARD)
 
 
 ```
+#define CAL_FREQ_SIZE 9
+#define CAL_DBM_SIZE 2
+typedef struct vpd_table_def {
+    char magic[4];
+    uint16_t calFreqs[CAL_FREQ_SIZE];
+    uint8_t calDBm[CAL_DBM_SIZE];
+    uint16_t calVpd[CAL_DBM_SIZE][CAL_FREQ_SIZE];
+} vpd_table_t;
+
+// OpenOSD-X BreakoutBoard
+const vpd_table_t vpd_table = {
+    .calFreqs = {5600,	5650,	5700,	5750,	5800,	5850,	5900, 5950, 6000},
+    .calDBm = {14, 20},
+    .calVpd = {
+        {1300,1330,1345,1400,1480,1590,1670,1710,1760},
+        {1910,1970,1980,2120,2270,2430,2540,2620,2750}
+    }
+};
+
+```
+```
 :020000040801F1
 :10F8000056504454E015121644167616A816DA1609
 :10F810000C173E1770170E141405320541057805B4
