@@ -54,6 +54,7 @@ extern "C" {
 #define COLUMN_SIZE 45
 #define CANVAS_H_R  540
 #define CANVAS_H_OFFSET   76       // 4pix(1byte) aligne
+#define CANVAS_H_OFFSET_GEN   64       // 4pix(1byte) aligne
 #define PIX_PERIOD 14               // period =14+1 =15
 #define VIDEO_GEN_LINE_NTSC  720    // 170MHz/15734Hz/15=720 ... mod4=0
 #define VIDEO_GEN_LINE_PAL   724    // 170MHz/15625Hz/15=724 ... mod4=0
@@ -66,17 +67,20 @@ extern "C" {
 #define COLUMN_SIZE 30
 #define CANVAS_H_R  360
 #define CANVAS_H_OFFSET   48       // 4pix(1byte) aligne
+#define CANVAS_H_OFFSET_GEN   28       // 4pix(1byte) aligne
 #define PIX_PERIOD 22               // period=22+1=23
-#define VIDEO_GEN_LINE_NTSC  492    // 170MHz/15734Hz/22=492  ... mod4=0
-#define VIDEO_GEN_LINE_PAL   492    // 170MHz/15625Hz/22=492 ... mod4=0
+#define VIDEO_GEN_LINE_NTSC  468    // 170MHz/15734Hz/23=470 --mod4--> 468
+#define VIDEO_GEN_LINE_PAL   472    // 170MHz/15625Hz/23=474 --mod4--> 472
 
 #define VIDEO_TIM_NS(t)    (t/129)
 
 #endif
 
-#define CANVAS_H   (CANVAS_H_R + CANVAS_H_OFFSET)
+#define CANVAS_H        (CANVAS_H_R + CANVAS_H_OFFSET)
 #define CANVAS_V_OFFSET_NTSC    32
-#define CANVAS_V_OFFSET_PAL     44
+#define CANVAS_V_OFFSET_PAL     36
+#define CANVAS_V_OFFSET_NTSC_GEN    16
+#define CANVAS_V_OFFSET_PAL_GEN     16
 #define CANVAS_V_NTSC           (234*2)     /* 18pix * 13char */
 #define CANVAS_V_PAL            (288*2)     /* 18pix * 16char */
 #define ROW_SIZE_MAX 32

@@ -116,7 +116,7 @@ static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 
 
-#define VIDEO_FORMAT_STR    ((state != STATE_SYNC) ? "UNKNOWN": (setting()->videoFormat == VIDEO_PAL) ? "PAL" : "NTSC")
+#define VIDEO_FORMAT_STR    ((setting()->videoFormat == VIDEO_PAL) ? "PAL" : "NTSC")
 
 typedef enum {
     FRAME_UNKNOWN=0,
@@ -568,8 +568,7 @@ void enableOSD(bool en)
   * @retval int
   */
 int main(void)
-
-  {
+{
 
   /* USER CODE BEGIN 1 */ 
     DEBUG_INIT();
@@ -634,8 +633,7 @@ int main(void)
     HAL_DAC_Init(&hdac1);
     HAL_DAC_MspInit(&hdac1);
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (0xfff*1000)/3300);    // 1v
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (0xfff*1500)/3300);    // 1v
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (0xfff*1500)/3300);    // WHITE:1.5v (Foxeer OSD is 1.5mV)
 
     HAL_DAC_Init(&hdac3);
     HAL_DAC_MspInit(&hdac3);
