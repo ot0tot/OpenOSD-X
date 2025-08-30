@@ -18,7 +18,7 @@ void videoGenHSYN(uint16_t *buf, uint16_t size, uint16_t line);
 void videoGen1stData(uint16_t *buf, uint16_t size, uint16_t line);
 void videoGen2ndData(uint16_t *buf, uint16_t size, uint16_t line);
 
-extern int32_t canvas_v_offset[3];
+int32_t canvas_v_offset_gen[]  ={CANVAS_V_OFFSET_NTSC_GEN, CANVAS_V_OFFSET_PAL_GEN};
 
 #define VG_SYN  0
 #define VG_BLK  0x0180
@@ -267,11 +267,6 @@ const videoGenFunc videoGenFuncTable[2][1251] = {
         NULL
     }
 };
-
-#define VG_SYN  0
-#define VG_BLK  0x0180
-#define VG_GRY  0x0280
-#define VG_WHI  0x0400
 
 //__attribute__((section (".sram2")))
 uint32_t dataTableVG[256][2] = {
@@ -678,13 +673,13 @@ void videoGen1stData(uint16_t *buf, uint16_t size, uint16_t line)
     cnt += VIDEO_TIM_NS(4700);
     memset16(&buf[cnt], VG_BLK, VIDEO_TIM_NS(4700) );
     cnt += VIDEO_TIM_NS(4700);
-    uint16_t offset = ( (cnt & 0x1) + (CANVAS_H_OFFSET>>1) ) & 0xfffe; // 32bit aligned for setVideoGenLine(). uint16_t *buf    @@TODO: adjust offset NTSC/PAL
+    uint16_t offset = ( (cnt & 0x1) + (CANVAS_H_OFFSET_GEN>>1) ) & 0xfffe; // 32bit aligned for setVideoGenLine(). uint16_t *buf    @@TODO: adjust offset NTSC/PAL
     memset16(&buf[cnt], VG_GRY, offset);
     cnt += offset;
 
     hpos2nd = size - cnt;
 
-    int32_t canvas_line = (int32_t)vg_vcanvas_count - canvas_v_offset[setting()->videoFormat];
+    int32_t canvas_line = (int32_t)vg_vcanvas_count - canvas_v_offset_gen[setting()->videoFormat];
     if ( canvas_line >= 0 && canvas_line < canvas_v[setting()->videoFormat] ){
 #ifdef RESOLUTION_HD
             setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(canvas_line/18), canvas_line % 18, 0, hpos2nd);
@@ -703,7 +698,7 @@ void videoGen2ndData(uint16_t *buf, uint16_t size, uint16_t line)
 {
     UNUSED(line);
     uint16_t cnt = 0;
-    int32_t canvas_line = (int32_t)vg_vcanvas_count - canvas_v_offset[setting()->videoFormat];
+    int32_t canvas_line = (int32_t)vg_vcanvas_count - canvas_v_offset_gen[setting()->videoFormat];
     if ( canvas_line >= 0 && canvas_line < canvas_v[setting()->videoFormat] ){
 #ifdef RESOLUTION_HD
         setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(canvas_line/18), canvas_line % 18, hpos2nd, CANVAS_H_R - hpos2nd);
