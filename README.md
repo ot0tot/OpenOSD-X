@@ -1,6 +1,6 @@
 
 <p align="right">
-  <a href="https://github.com/OpenOSD-X/OpenOSD-X/README_jp.md">日本語はこちら</a>
+  <a href="./README_jp.md">日本語はこちら</a>
 </p>
 
 # OpenOSD-X
