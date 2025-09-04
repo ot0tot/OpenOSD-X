@@ -49,7 +49,7 @@
 ---
 
 ## ファームウェア更新方法
-
+FC経由(SerialPassthrough)またはUSB-Serial(FTDI)でファームウェアアップデートが可能です
 1. OpenVTX 基板、FC、PC を接続する
 2. Python スクリプトを実行する（自動で COM ポートを検出して書き込み）
 

@@ -50,6 +50,7 @@
 ---
 
 ## Firmware Update
+Firmware updates are possible via FC (Serial-Passthrough) or USB-Serial (FTDI).
 
 1. Connect the OpenVTX board, FC, and PC
 2. Run the Python script (auto-detects COM port and flashes firmware):
