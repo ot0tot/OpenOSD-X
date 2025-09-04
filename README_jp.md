@@ -1,5 +1,5 @@
 <p align="right">
-  <a href="https://github.com/OpenOSD-X/OpenOSD-X/README.md">English</a>
+  <a href="./README.md">English</a>
 </p>
 
 # OpenOSD-X
