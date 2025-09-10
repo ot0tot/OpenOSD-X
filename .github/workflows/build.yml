@@ -50,20 +50,19 @@ jobs:
           name: "firmware_${{ matrix.resolution }}_${{ matrix.target }}_hex"
           path: build_${{ matrix.resolution }}_${{ matrix.target }}/*.hex
 
+      # DEV Build
+      - name: Create build directory (dev)
+        run: mkdir -p build_dev
 
-    # DEV Build
-    - name: Create build directory (dev)
-      run: mkdir -p build_dev
+      - name: Build (dev)
+        working-directory: ./build_dev
+        run: |
+          cmake -DDEV_MODE=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+          make -j4
 
-    - name: Build (dev)
-      working-directory: ./build_dev
-      run: |
-        cmake -DDEV_MODE=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
-        make -j4
-
-    - name: Upload HEX artifact (dev)
-      uses: actions/upload-artifact@v4
-      with:
-        name: "firmware_dev_hex"
-        path: build_dev/*.hex
+      - name: Upload HEX artifact (dev)
+        uses: actions/upload-artifact@v4
+        with:
+          name: "firmware_dev_hex"
+          path: build_dev/*.hex
 
