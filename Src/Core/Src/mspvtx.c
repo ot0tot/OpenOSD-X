@@ -118,14 +118,15 @@ uint16_t channelFreqTable[FREQ_TABLE_SIZE] = {
     5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917, // R
     5333, 5373, 5413, 5453, 5493, 5533, 5573, 5613  // L
 };
-//uint8_t saPowerLevelsLut[SA_NUM_POWER_LEVELS] = {1, RACE_MODE, 14, 20, 26};
-uint8_t saPowerLevelsLut[SA_NUM_POWER_LEVELS] = {1, RACE_MODE, 14, 20};
+#ifdef TARGET_BREAKOUTBOARD
 
+uint8_t saPowerLevelsLut[SA_NUM_POWER_LEVELS] = {1, RACE_MODE, 14, 20};
 uint8_t saPowerLevelsLabel[SA_NUM_POWER_LEVELS * POWER_LEVEL_LABEL_LENGTH] = {'0', ' ', ' ',
                                                                               'R', 'C', 'E',
                                                                               '2', '5', ' ',
                                                                               '1', '0', '0'};
 //                                                                              '4', '0', '0'};
+#endif
 
 uint8_t pitMode = 0;
 

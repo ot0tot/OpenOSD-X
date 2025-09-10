@@ -8,67 +8,72 @@ on:
   pull_request:
   workflow_dispatch:
 
-
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        resolution: [sd, hd]
+        target: [breakoutboard]
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Install Arm GNU Toolchain (arm-none-eabi-gcc)
-      uses: carlosperate/arm-none-eabi-gcc-action@v1
-      with:
-        release: '14.2.Rel1' # <-- The compiler release to use
+      - uses: actions/checkout@v4
 
-    - name: Install srec_cat
-      run: sudo apt-get update && sudo apt-get install -y srecord
+      - name: Install Arm GNU Toolchain (arm-none-eabi-gcc)
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '14.2.Rel1' # <-- The compiler release to use
 
-    # SD Build
-    - name: Create build directory (sd)
-      run: mkdir -p build_sd
+      - name: Install srec_cat
+        run: sudo apt-get update && sudo apt-get install -y srecord
 
-    - name: Build (default)
-      working-directory: ./build_sd
-      run: |
-        cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
-        make -j4
+      - name: Create build directory
+        run: mkdir -p build_${{ matrix.target }}_${{ matrix.resolution }}
 
-    - name: Upload HEX artifact (sd)
-      uses: actions/upload-artifact@v4
-      with:
-        name: "firmware_sd_hex"
-        path: build_sd/*.hex
+      - name: Configure CMake
+        working-directory: build_${{ matrix.target }}_${{ matrix.resolution }}
+        run: |
+          if [ "${{ matrix.resolution }}" = "hd" ]; then
+            cmake -DRESOLUTION_HD=ON -DTARGET=${{ matrix.target }} -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+          else
+            cmake -DTARGET=${{ matrix.target }} -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+          fi
 
-    # HD Build
-    - name: Create build directory (hd)
-      run: mkdir -p build_hd
+      - name: Build
+        working-directory: ./build_${{ matrix.target }}_${{ matrix.resolution }}
+        run: make -j4
 
-    - name: Build (hd)
-      working-directory: ./build_hd
-      run: |
-        cmake -DRESOLUTION_HD=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
-        make -j4
+      - name: Upload HEX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "openosd-x_${{ matrix.target }}_${{ matrix.resolution }}_hex"
+          path: build_${{ matrix.target }}_${{ matrix.resolution }}/*.hex
 
-    - name: Upload HEX artifact (hd)
-      uses: actions/upload-artifact@v4
-      with:
-        name: "firmware_hd_hex"
-        path: build_hd/*.hex
+  build_dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-    # DEV Build
-    - name: Create build directory (dev)
-      run: mkdir -p build_dev
+      - name: Install Arm GNU Toolchain (arm-none-eabi-gcc)
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '14.2.Rel1'
 
-    - name: Build (dev)
-      working-directory: ./build_dev
-      run: |
-        cmake -DDEV_MODE=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
-        make -j4
+      - name: Install srec_cat
+        run: sudo apt-get update && sudo apt-get install -y srecord
 
-    - name: Upload HEX artifact (dev)
-      uses: actions/upload-artifact@v4
-      with:
-        name: "firmware_dev_hex"
-        path: build_dev/*.hex
+      - name: Create build directory (dev)
+        run: mkdir -p build_dev
 
+      - name: Build (dev)
+        working-directory: ./build_dev
+        run: |
+          cmake -DDEV_MODE=ON -DTARGET=breakoutboard -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+          make -j4
+
+      - name: Upload HEX artifact (dev)
+        uses: actions/upload-artifact@v4
+        with:
+          name: "openosd-x_breakoutboard_dev"
+          path: build_dev/*.hex

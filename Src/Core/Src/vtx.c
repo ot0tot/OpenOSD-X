@@ -37,6 +37,8 @@ char * vtxstate_str[] =
     "VTX_STATE_DISABLE"
 };
 
+#ifdef TARGET_BREAKOUTBOARD
+
 #define CAL_FREQ_SIZE 9
 #define CAL_DBM_SIZE 2
 typedef struct vpd_table_def {
@@ -48,8 +50,6 @@ typedef struct vpd_table_def {
 
 __attribute__((section(".vpdtable")))
 const volatile vpd_table_t adj_vpdtable;
-
-// OpenOSD-X
 const vpd_table_t vpd_table = {
     .calFreqs = {5600,	5650,	5700,	5750,	5800,	5850,	5900, 5950, 6000},
     .calDBm = {14, 20},
@@ -58,6 +58,7 @@ const vpd_table_t vpd_table = {
         {1910,1970,1980,2120,2270,2430,2540,2620,2750}
     }
 };
+#endif
 
 
 vpd_table_t *vpdt = (void*)&vpd_table;
