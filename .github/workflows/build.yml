@@ -50,7 +50,19 @@ jobs:
           name: "openosd-x_${{ matrix.resolution }}_${{ matrix.target }}_hex"
           path: build_${{ matrix.resolution }}_${{ matrix.target }}/*.hex
 
-      # DEV Build
+  build_dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Arm GNU Toolchain (arm-none-eabi-gcc)
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '14.2.Rel1'
+
+      - name: Install srec_cat
+        run: sudo apt-get update && sudo apt-get install -y srecord
+
       - name: Create build directory (dev)
         run: mkdir -p build_dev
 
@@ -63,7 +75,5 @@ jobs:
       - name: Upload HEX artifact (dev)
         uses: actions/upload-artifact@v4
         with:
-          name: "openosd-x_breakoutboard_dev.hex"
+          name: "openosd-x_breakoutboard_dev"
           path: build_dev/*.hex
-
-
