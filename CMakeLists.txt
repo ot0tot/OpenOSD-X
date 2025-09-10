@@ -2,6 +2,36 @@ cmake_minimum_required(VERSION 3.22)
 
 set(CMAKE_PROJECT_NAME openosd-x)
 
+#set(PRJ_VERSION "0.1.0")
+set(PRJ_VERSION "")
+
+
+set(VERSION_C "${CMAKE_CURRENT_BINARY_DIR}/version.c")
+
+configure_file(
+    ${CMAKE_CURRENT_LIST_DIR}/cmake/version.c.in
+    ${VERSION_C}
+    @ONLY
+)
+#target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${VERSION_C})
+
+# Require TARGET to be set from command line (-DTARGET=xx)
+set(TARGET "" CACHE STRING "Target device (e.g., breakoutboard, etc.)")
+if("${TARGET}" STREQUAL "")
+    set(TARGET "breakoutboard")
+    message(STATUS "No TARGET specified. Defaulting to: ${TARGET}")
+else()
+    message(STATUS "Building for target: ${TARGET}")
+endif()
+
+# Add TARGET macro to compiler definitions
+add_compile_definitions(TARGET=${TARGET})
+if("${TARGET}" STREQUAL "breakoutboard")
+    add_compile_definitions(TARGET_BREAKOUTBOARD=1)
+elseif("${TARGET}" STREQUAL "novtx")
+    add_compile_definitions(TARGET_NOVTX=1)
+endif()
+
 option(USE_RTT "Enable SEGGER RTT support" OFF)
 
 # Add options to select resolution mode
@@ -32,6 +62,7 @@ endif()
 
 # Include toolchain file
 include("cmake/gcc-arm-none-eabi.cmake")
+
 if(USE_RTT)
     message(STATUS "RTT enabled")
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/rtt.cmake)
@@ -94,6 +125,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ./Src/Core/Startup/startup_stm32g431kbtx.s
     ${RTT_SOURCES}
     ${CLI_SOURCES}
+	${VERSION_C}
 )
 
 # Add include paths
@@ -115,25 +147,22 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 )
 
 # Define output file names
-set(BIN_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${HEX_SUFFIX}.bin")
-set(HEX_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${HEX_SUFFIX}.hex")
-set(HEXTM1_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${HEX_SUFFIX}_temp1.hex")
-set(HEXTM2_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${HEX_SUFFIX}_temp2.hex")
-set(HEXHEADER_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${HEX_SUFFIX}_header.hex")
-
+if("${PRJ_VERSION}" STREQUAL "")
+    set(BIN_FILE    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${TARGET}_${HEX_SUFFIX}.bin")
+    set(HEX_FILE    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${TARGET}_${HEX_SUFFIX}.hex")
+else()
+    set(BIN_FILE    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${TARGET}_${HEX_SUFFIX}_v${PRJ_VERSION}.bin")
+    set(HEX_FILE    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${TARGET}_${HEX_SUFFIX}_v${PRJ_VERSION}.hex")
+endif()
+set(HEXTM1_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${TARGET}_${HEX_SUFFIX}_temp1.hex")
+set(HEXTM2_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${TARGET}_${HEX_SUFFIX}_temp2.hex")
+set(HEXHEADER_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_${TARGET}_${HEX_SUFFIX}_header.hex")
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${PROJECT_NAME}> ${BIN_FILE}
         COMMAND ${CMAKE_OBJCOPY} -Oihex --gap-fill=0xFF $<TARGET_FILE:${PROJECT_NAME}> ${HEXTM1_FILE}
-        # Calculate CRC and create header with size(91K=0x16E00)
         COMMAND srec_cat ${HEXTM1_FILE} -Intel -crop 0x08004200 0x0801B000 -STM32 0x08004004 -generate 0x08004000 0x08004004 -constant-l-e 0x16E00 4 -output ${HEXTM2_FILE} -Intel
         COMMAND srec_cat ${HEXTM2_FILE} -Intel -crop 0x08004000 0x08004008 -output ${HEXHEADER_FILE} -Intel
-        # Merge with original file
         COMMAND srec_cat ${HEXHEADER_FILE} -Intel ${HEXTM1_FILE} -Intel -output ${HEX_FILE} -Intel
-        # Delete temp files
-	    COMMAND ${CMAKE_COMMAND} -E rm -f ${HEXTM1_FILE} ${HEXTM2_FILE} ${HEXHEADER_FILE}
-		)
-
-
-
-
+        COMMAND ${CMAKE_COMMAND} -E rm -f ${HEXTM1_FILE} ${HEXTM2_FILE} ${HEXHEADER_FILE}
+)
