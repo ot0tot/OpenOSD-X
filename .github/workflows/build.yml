@@ -29,10 +29,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y srecord
 
       - name: Create build directory
-        run: mkdir -p build_${{ matrix.resolution }}_${{ matrix.target }}
+        run: mkdir -p build_${{ matrix.target }}_${{ matrix.resolution }}
 
       - name: Configure CMake
-        working-directory: ./build_${{ matrix.resolution }}_${{ matrix.target }}
+        working-directory: build_${{ matrix.target }}_${{ matrix.resolution }}
         run: |
           if [ "${{ matrix.resolution }}" = "hd" ]; then
             cmake -DRESOLUTION_HD=ON -DTARGET=${{ matrix.target }} -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
@@ -41,7 +41,7 @@ jobs:
           fi
 
       - name: Build
-        working-directory: ./build_${{ matrix.resolution }}_${{ matrix.target }}
+        working-directory: ./build_${{ matrix.target }}_${{ matrix.resolution }}
         run: make -j4
 
       - name: Upload HEX artifact
