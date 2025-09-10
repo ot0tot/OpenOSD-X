@@ -47,8 +47,8 @@ jobs:
       - name: Upload HEX artifact
         uses: actions/upload-artifact@v4
         with:
-          name: "openosd-x_${{ matrix.resolution }}_${{ matrix.target }}_hex"
-          path: build_${{ matrix.resolution }}_${{ matrix.target }}/*.hex
+          name: "openosd-x_${{ matrix.target }}_${{ matrix.resolution }}_hex"
+          path: build_${{ matrix.target }}_${{ matrix.resolution }}/*.hex
 
   build_dev:
     runs-on: ubuntu-latest
