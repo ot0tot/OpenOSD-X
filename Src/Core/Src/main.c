@@ -654,8 +654,10 @@ int main(void)
     uart_init();
     initLed();
     msp_init();
+#ifndef TARGET_NOVTX
     initVtx();
     mspVtx_init();
+#endif
 
 #ifdef DEV_MODE
     startCli();
@@ -700,7 +702,9 @@ int main(void)
         charCanvasDraw();
     }
 #else
+#ifndef TARGET_NOVTX
     mspUpdate();
+#endif
     uart_poll();
     
     int cnt=32;
@@ -718,7 +722,9 @@ int main(void)
 
     procSysTimer();
     sync_proc();
+#ifndef TARGET_NOVTX
     procVtx();
+#endif
 
     uint32_t now = HAL_GetTick();
     if (now - previous_time > 1000){
@@ -734,7 +740,9 @@ int main(void)
 
         DEBUG_PRINTF("%s : %s(%d)", state_str[state], VIDEO_FORMAT_STR, video_line_last);
         DEBUG_PRINTF("pluse_level %dmv(%d-%d)",(pluse_level_high+pluse_level_low)/2, pluse_level_high, pluse_level_low);
+#ifndef TARGET_NOVTX
         debuglogVtx();
+#endif
 //        DEBUG_PRINTF("IC1=%d IC2=%d", uwIC1Value, uwIC2Value);
 
     }

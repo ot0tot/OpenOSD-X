@@ -16,6 +16,8 @@
 #include "setting.h"
 #include "mspvtx.h"
 
+#ifndef TARGET_NOVTX
+
 // ====================================================================================
 // MSP Protocol Definitions
 // ====================================================================================
@@ -174,26 +176,6 @@ uint8_t getBandLetterByIdx(uint8_t idx)
 {
     return bandLetter[idx];
 }
-
-/**
- * @brief  Calculates the MSP CRC-8-D5 checksum used in the MSP protocol.
- * @param  crc The current CRC value.
- * @param  data The new byte to include in the calculation.
- * @return The new calculated CRC value.
- */
-uint8_t mspCalcCrc(uint8_t crc, unsigned char data)
-{
-    crc ^= data;
-    for (int i = 0; i < 8; ++i) {
-        if (crc & 0x80) {
-            crc = (crc << 1) ^ 0xD5;
-        } else {
-            crc = crc << 1;
-        }
-    }
-    return crc;
-}
-
 
 /**
  * @brief Sends a simple MSP request with no payload.
@@ -573,3 +555,4 @@ void mspVtx_init(void)
     setVtx(channelFreqTable[setting()->channel], saPowerLevelsLut[setting()->powerIndex]);
 }
 
+#endif

@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         resolution: [sd, hd]
-        target: [breakoutboard]
+        target: [breakoutboard,novtx]
 
     steps:
       - uses: actions/checkout@v4
