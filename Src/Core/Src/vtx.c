@@ -6,6 +6,7 @@
 #include "log.h"
 #include "vtx.h"
 
+#ifndef TARGET_NOVTX
 
 #define PLL_SETTLE_TIME_MS      500
 #define ADC_CONV_TIME_MS        100         // ms
@@ -58,6 +59,7 @@ const vpd_table_t vpd_table = {
         {1910,1970,1980,2120,2270,2430,2540,2620,2750}
     }
 };
+#define VPD_MAX_MV  2850
 #endif
 
 
@@ -192,7 +194,8 @@ void vrefUpdate(void)
         vref -= 10;
     }
     vref = (vref < 0) ? 0: vref;
-    vref = (vref > 3300) ? 3300: vref;
+    vref = (vref > VPD_MAX_MV) ? VPD_MAX_MV: vref;
+
     LL_DAC_ConvertData12RightAligned(DAC1, LL_DAC_CHANNEL_2, (uint32_t)(0xfff*vref)/3300);
 
 }
@@ -277,3 +280,6 @@ void procVtx(void)
     }
 
 }
+
+#endif
+

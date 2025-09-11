@@ -420,6 +420,7 @@ void msp_process_message(void)
             DEBUG_PRINTF("MSP_SET_OSD_CANVAS");
             msp_set_osd_canvas_recv = true;
             break;
+#ifndef TARGET_NOVTX
         case MSP_VTX_CONFIG:
             DEBUG_PRINTF("MSP_VTX_CONFIG");
             mspvtx_VtxConfig( &msp_rx_message.buffer[msp_rx_message.payload_offset] );
@@ -439,7 +440,7 @@ void msp_process_message(void)
         case MSP_VTXTABLE_POWERLEVEL: // Get VTX Power Level table entry
             mspvtx_VtxTablePowerLevel( &msp_rx_message.buffer[msp_rx_message.payload_offset] );
             break;
-
+#endif
         case MSP_REBOOT:
             rebootDfu();
             break;
