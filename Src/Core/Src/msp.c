@@ -384,9 +384,10 @@ void msp_process_message(void)
         case MSP_DISPLAYPORT:
             switch(msp_rx_message.buffer[msp_rx_message.payload_offset]){
                 case MSP_DP_HEARTBEAT:
+                    //DEBUG_PRINTF("MSP_HEARTBEAT");
                     {
                         if ( msp_set_osd_canvas_recv == false /*&& video_format != VIDEO_UNKNOWN*/ ){
-                            DEBUG_PRINTF("MSP_DP_HEARTBEAT");
+                            DEBUG_PRINTF("MSP_HEARTBEAT");
                             uint8_t data[2] = {COLUMN_SIZE,0};
                             data[1] = (setting()->videoFormat == VIDEO_PAL) ? ROW_SIZE_PAL : ROW_SIZE_NTSC;
                             msp_send_reply(MSP_SET_OSD_CANVAS, data, sizeof(data), msp_rx_message.version);
@@ -395,11 +396,12 @@ void msp_process_message(void)
                     break;
 
                 case MSP_DP_CLEAR_SCREEN:
+                    //DEBUG_PRINTF("MSP_CLEAR_SCREEN");
                     charCanvasClear();
                     break;
 
                 case MSP_DP_WRITE_STRING:
-                    //DEBUG_PRINTF("MSP_DP_WRITE_STRING");
+                    //DEBUG_PRINTF("MSP_WRITE_STRING:%c", msp_rx_message.buffer[ msp_rx_message.payload_offset +4 ]);
                     charCanvasWrite(
                         msp_rx_message.buffer[ msp_rx_message.payload_offset +1], 
                         msp_rx_message.buffer[ msp_rx_message.payload_offset +2 ],
@@ -408,10 +410,11 @@ void msp_process_message(void)
                     break;
 
                 case MSP_DP_DRAW_SCREEN:
+                    //DEBUG_PRINTF("MSP_DRAW_SCREEN");
                     charCanvasDraw();
                     break;
                 case MSP_DP_FONTCHAR_WRITE:
-                    DEBUG_PRINTF("MSP_DP_FONTCHAR_WRITE");
+                    //DEBUG_PRINTF("MSP_FONTCHAR_WRITE");
                     writeFlashFont(msp_rx_message.buffer[ msp_rx_message.payload_offset +2]<<8 | msp_rx_message.buffer[ msp_rx_message.payload_offset +1], &msp_rx_message.buffer[ msp_rx_message.payload_offset +4]);
                     break;
             }
