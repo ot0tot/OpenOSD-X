@@ -4,9 +4,9 @@
 #include "main.h"
 #include "char_canvas.h"
 
-static uint8_t canvas[2][ROW_SIZE_MAX * COLUMN_SIZE_MAX] = {0};
+static uint8_t canvas_draw[ROW_SIZE_MAX * COLUMN_SIZE_MAX] = {0};
+static uint8_t canvas[ROW_SIZE_MAX * COLUMN_SIZE_MAX] = {0};
 
-static uint8_t canvas_active = 0;
 static bool canvas_write = false;
 static bool canvas_next = false;
 
@@ -21,17 +21,19 @@ void charCanvasInit(void)
     }
 #else
     memset(canvas, 0, sizeof(canvas));
+    memset(canvas_draw, 0, sizeof(canvas_draw));
 #endif
 }
 
 void charCanvasClear(void)
 {
-    memset(&canvas[canvas_active ^ 1][0], ' ', sizeof(canvas[0]));
+    memset(canvas, ' ', sizeof(canvas));
 }
 
 void charCanvasDraw(void)
 {
     if ( canvas_write ){
+        memcpy(canvas_draw, canvas, sizeof(canvas_draw));
         canvas_next = true;
         canvas_write = false;
     };
@@ -40,7 +42,7 @@ void charCanvasDraw(void)
 void charCanvasWrite(uint8_t row, uint8_t column, uint8_t* data, uint8_t len)
 {
     if (row < ROW_SIZE_PAL){
-        memcpy(&canvas[canvas_active ^ 1][row*COLUMN_SIZE + column], data, len);
+        memcpy(&canvas[row*COLUMN_SIZE + column], data, len);
         canvas_write = true;
     }
 }
@@ -49,13 +51,12 @@ void charCanvasNext(void)
 {
     if (canvas_next){
         canvas_next = false;
-        canvas_active ^= 1;
     }
 }
 
 uint8_t* charCanvasGet(uint16_t row)
 {
-    return &canvas[canvas_active][row * COLUMN_SIZE];
+    return &canvas_draw[row * COLUMN_SIZE];
 }
 
 
