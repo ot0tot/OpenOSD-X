@@ -11,7 +11,7 @@
 
 * Enables 5.8GHz analog video output when combined with a digital-only flight controller (without analog OSD)
 * Provides both **SD version** (same resolution as MAX7456) and **HD version** (supports more information display)
-* Font updates via Betaflight Configurator (planned support)
+* Font updates via Betaflight Configurator
 * Uses the compact and cost-effective **STM32G431KBT**, allowing standalone OSD operation
 
 ### Development in Progress
@@ -71,6 +71,16 @@ Releases are provided per board type and resolution:
 
 * `openosd-x_breakoutboard_sd.hex` …… Standard resolution for breakout board
 * `openosd-x_breakoutboard_hd.hex` …… High resolution for breakout board
+
+---
+
+## Font Update
+
+Font updates can be performed directly from the Betaflight Configurator.
+
+* Requires Betaflight 2025.12.0 or later
+* Use a Configurator version that is compatible with the firmware.
+* Use a firmware build with the custom definition USE_MSP_DISPLAYPORT_FONT enabled
 
 ---
 
