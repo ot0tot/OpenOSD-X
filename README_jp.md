@@ -15,7 +15,7 @@
 
 ### 開発中の様子
 
-[![Watch the video](https://img.youtube.com/vi/yP9opvcfM-8/0.jpg)](https://youtu.be/iuA0HPM-mJo)
+[![Watch the video](https://img.youtube.com/vi/iuA0HPM-mJo/0.jpg)](https://youtu.be/iuA0HPM-mJo)
 
 ---
 
