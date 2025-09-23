@@ -79,8 +79,8 @@ Releases are provided per board type and resolution:
 Font updates can be performed directly from the Betaflight Configurator.
 
 * Requires Betaflight 2025.12.0 or later
+* Use a Betaflight firmware build with the custom definition USE_MSP_DISPLAYPORT_FONT enabled.
 * Use a Configurator version that is compatible with the firmware.
-* Use a firmware build with the custom definition USE_MSP_DISPLAYPORT_FONT enabled
 
 ---
 
