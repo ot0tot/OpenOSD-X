@@ -10,13 +10,12 @@
 
 * デジタル専用 FC（アナログ OSD 非搭載）と組み合わせることで、5.8GHz アナログ映像を利用可能
 * MAX7456 と同等解像度の **SD 版** に加え、より多くの情報を表示できる **HD 版** を用意
-* Betaflight Configurator からフォントアップデートが可能（対応予定）
+* Betaflight Configurator からフォントアップデートが可能
 * 小型・低価格な **STM32G431KBT** を採用し、OSD 単体でも使用可能
 
 ### 開発中の様子
 
-[![Watch the video](https://img.youtube.com/vi/yP9opvcfM-8/0.jpg)](https://youtu.be/yP9opvcfM-8)
-[![Watch the video](https://img.youtube.com/vi/Voa65tm_uUc/0.jpg)](https://youtu.be/Voa65tm_uUc?si=CIwmTUJLayKtx44Y&t=2)
+[![Watch the video](https://img.youtube.com/vi/iuA0HPM-mJo/0.jpg)](https://youtu.be/iuA0HPM-mJo)
 
 ---
 
@@ -68,6 +67,16 @@ FC経由(SerialPassthrough)またはUSB-Serial(FTDI)でファームウェアア�
 
 * `openosd-x_breakoutboard_sd.hex` …… breakoutboard 用 通常解像度版
 * `openosd-x_breakoutboard_hd.hex` …… breakoutboard 用 高解像度版
+
+---
+## フォントアップデート
+
+Betaflight Configurator からフォントアップデートが可能です
+
+* Betaflight 2025.12.0以降が必要です。
+* Betaflightのファームはカスタム定義"USE_MSP_DISPLAYPORT_FONT"でbuildしたファームを使用してください
+* configratorもファームに対応したものを使用してください。
+
 
 ---
 
