@@ -4,13 +4,13 @@
 #include "char_canvas.h"
 #include "rtc6705.h"
 #include "log.h"
+#include "setting.h"
 #include "vtx.h"
 
 #ifndef TARGET_NOVTX
 
 #define PLL_SETTLE_TIME_MS      500
 #define ADC_CONV_TIME_MS        100         // ms
-#define VREF_INIT_MV 1800                   // mV
 
 typedef enum {
     VTX_STATE_INIT = 0,
@@ -68,6 +68,7 @@ uint16_t target_vpd = 0;
 uint16_t vpd = 0;
 int32_t vref = 0;
 int32_t vpd_error;
+uint16_t vpd_save_count = 0;
 uint16_t vtx_freq = 0;
 uint32_t next_state_timer = 0;
 VTX_STATE vtx_state = VTX_STATE_INIT;
@@ -198,6 +199,17 @@ void vrefUpdate(void)
 
     LL_DAC_ConvertData12RightAligned(DAC1, LL_DAC_CHANNEL_2, (uint32_t)(0xfff*vref)/3300);
 
+	// save vref
+    if (vpd_error > 100 || vpd_error < -100 ){
+        vpd_save_count = 100;
+    }
+    if (vpd_save_count != 0){
+        if (--vpd_save_count == 0){
+            setting()->vref_init = vref;
+        }
+    }
+
+
 }
 
 void debuglogVtx(void)
@@ -223,7 +235,7 @@ void procVtx(void)
             break;
         case VTX_STATE_INIT_RTC6705:
             if (initRtc6705check()){
-                vref = VREF_INIT_MV;
+                vref = setting()->vref_init;
                 LL_DAC_ConvertData12RightAligned(DAC1, LL_DAC_CHANNEL_2, (uint32_t)vref);
                 rtc6705PowerAmpOff();
                 rtc6705WriteFrequency(vtx_freq);
@@ -237,6 +249,7 @@ void procVtx(void)
                 LL_DAC_ConvertData12RightAligned(DAC1, LL_DAC_CHANNEL_2, (uint32_t)vref);
                 rtc6705PowerAmpOn();
                 vtx_state = VTX_STATE_IDLE;
+                DEBUG_PRINTF("vtx_state:VTX_STATE_IDLE");
                 next_state_timer = now;
             }
             break;
@@ -245,6 +258,7 @@ void procVtx(void)
                 //DEBUG_PRINTF("adc_calibration");
                 LL_ADC_StartCalibration(ADC2, LL_ADC_SINGLE_ENDED);
                 vtx_state = VTX_STATE_CALIB_START;
+                //DEBUG_PRINTF("vtx_state:VTX_STATE_CALIB_START");
             }
             break;
         case VTX_STATE_CALIB_START:
