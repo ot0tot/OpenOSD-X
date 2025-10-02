@@ -66,13 +66,13 @@ extern "C" {
 #define ROW_SIZE_PAL 16
 #define COLUMN_SIZE 30
 #define CANVAS_H_R  360
-#define CANVAS_H_OFFSET   48       // 4pix(1byte) aligne
+#define CANVAS_H_OFFSET   36       // 4pix(1byte) aligne
 #define CANVAS_H_OFFSET_GEN   28       // 4pix(1byte) aligne
-#define PIX_PERIOD 22               // period=22+1=23
-#define VIDEO_GEN_LINE_NTSC  468    // 170MHz/15734Hz/23=470 --mod4--> 468
-#define VIDEO_GEN_LINE_PAL   472    // 170MHz/15625Hz/23=474 --mod4--> 472
+#define PIX_PERIOD 23               // period=23+1=24
+#define VIDEO_GEN_LINE_NTSC  448    // 170MHz/15734Hz/24=450.2= --mod4--> 448
+#define VIDEO_GEN_LINE_PAL   452    // 170MHz/15625Hz/24=453.3 --mod4--> 452
 
-#define VIDEO_TIM_NS(t)    (t/129)
+#define VIDEO_TIM_NS(t)    (t/141)
 
 #endif
 
