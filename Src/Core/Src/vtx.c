@@ -9,13 +9,13 @@
 
 #ifndef TARGET_NOVTX
 
-#define PLL_SETTLE_TIME_MS      500
-#define ADC_CONV_TIME_MS        100         // ms
+#define PLL_STABLE_TIME_MS      500
+#define ADC_CONV_TIME_MS        10         // ms
 
 typedef enum {
     VTX_STATE_INIT = 0,
     VTX_STATE_INIT_RTC6705,
-    VTX_STATE_PLL_SETTLE,
+    VTX_STATE_PLL_STABLE,
     VTX_STATE_IDLE,
     VTX_STATE_CALIB_START,
     VTX_STATE_CALIB_DELAY,
@@ -29,7 +29,7 @@ char * vtxstate_str[] =
 {
     "VTX_STATE_INIT",
     "VTX_STATE_INIT_RTC6705",
-    "VTX_STATE_PLL_SETTLE",
+    "VTX_STATE_PLL_STABLE",
     "VTX_STATE_IDLE",
     "VTX_STATE_CALIB_START",
     "VTX_STATE_CALIB_DELAY",
@@ -100,6 +100,7 @@ void initVtx(void)
 void setVtx_vpd(uint16_t freq, uint16_t vpd)
 {
 
+    DEBUG_PRINTF("setVtx_vpd freq:%d vpd:%d", freq, vpd);
     if (vtx_freq != freq || target_vpd != vpd){
         vtx_freq = freq;
         target_vpd = vpd;
@@ -184,7 +185,10 @@ void vrefUpdate(void)
     vpd = ( LL_ADC_REG_ReadConversionData12(ADC2) * 3300) / 65535;
     vpd_error = (int32_t)vpd - target_vpd;
     if (vpd_error < -100){
+        //DEBUG_PRINTF("vpd_error %d", vpd_error);
+        vpd_save_count = 100;
         vref += 10;
+        debuglogVtx();
     }else if (vpd_error < 0){
         vref += 1;
     }else if (vpd_error == 0){
@@ -192,7 +196,10 @@ void vrefUpdate(void)
     }else if (vpd_error < 100){
         vref -= 1;
     }else{
+        //DEBUG_PRINTF("vpd_error %d", vpd_error);
+        vpd_save_count = 100;
         vref -= 10;
+	        debuglogVtx();
     }
     vref = (vref < 0) ? 0: vref;
     vref = (vref > VPD_MAX_MV) ? VPD_MAX_MV: vref;
@@ -200,16 +207,12 @@ void vrefUpdate(void)
     LL_DAC_ConvertData12RightAligned(DAC1, LL_DAC_CHANNEL_2, (uint32_t)(0xfff*vref)/3300);
 
 	// save vref
-    if (vpd_error > 100 || vpd_error < -100 ){
-        vpd_save_count = 100;
-    }
     if (vpd_save_count != 0){
         if (--vpd_save_count == 0){
             setting()->vref_init = vref;
+            DEBUG_PRINTF("save vref");
         }
     }
-
-
 }
 
 void debuglogVtx(void)
@@ -235,19 +238,18 @@ void procVtx(void)
             break;
         case VTX_STATE_INIT_RTC6705:
             if (initRtc6705check()){
-                vref = setting()->vref_init;
-                LL_DAC_ConvertData12RightAligned(DAC1, LL_DAC_CHANNEL_2, (uint32_t)vref);
                 rtc6705PowerAmpOff();
                 rtc6705WriteFrequency(vtx_freq);
-                next_state_timer = HAL_GetTick();
-                vtx_state = VTX_STATE_PLL_SETTLE;
-                DEBUG_PRINTF("vtx_state:VTX_STATE_PLL_SETTLE");
+                next_state_timer = now;
+                vtx_state = VTX_STATE_PLL_STABLE;
+                DEBUG_PRINTF("vtx_state:VTX_STATE_PLL_STABLE");
             }
             break;
-        case VTX_STATE_PLL_SETTLE:
-            if ( (now - next_state_timer) >= PLL_SETTLE_TIME_MS ){
-                LL_DAC_ConvertData12RightAligned(DAC1, LL_DAC_CHANNEL_2, (uint32_t)vref);
+        case VTX_STATE_PLL_STABLE:
+            if ( (now - next_state_timer) >= PLL_STABLE_TIME_MS ){
                 rtc6705PowerAmpOn();
+                vref = setting()->vref_init;
+                LL_DAC_ConvertData12RightAligned(DAC1, LL_DAC_CHANNEL_2, (uint32_t)(0xfff*vref)/3300);
                 vtx_state = VTX_STATE_IDLE;
                 DEBUG_PRINTF("vtx_state:VTX_STATE_IDLE");
                 next_state_timer = now;
@@ -275,6 +277,7 @@ void procVtx(void)
             break;
         case VTX_STATE_ADC_ENABLE:
             if (LL_ADC_IsActiveFlag_ADRDY(ADC2) == 1){
+                LL_ADC_ClearFlag_EOC(ADC2);
                 LL_ADC_REG_StartConversion(ADC2);
                 vtx_state = VTX_STATE_ADC_CONVERSION;
             }
