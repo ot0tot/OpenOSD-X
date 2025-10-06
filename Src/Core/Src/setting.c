@@ -45,7 +45,9 @@ void setting_update(void)
 
     if (memcmp(&openosdx_setting_backup, &openosdx_setting, sizeof(openosdx_setting_t))){
         memcpy(&openosdx_setting_backup, &openosdx_setting, sizeof(openosdx_setting_t));
-        update_time = now | 0x1;
+        update_time = now;
+        DEBUG_PRINTF("setting_update");
+        setting_print();
     }
     if ( update_time ){
         if ( now - update_time > 1000){ // 1sec
@@ -53,7 +55,7 @@ void setting_update(void)
             flash_erase((uint32_t)&flash_setting, sizeof(openosdx_setting_t));
             flash_write((uint32_t)&flash_setting, (uint8_t*)&openosdx_setting, sizeof(openosdx_setting_t));
             memcpy(&openosdx_setting_backup, &flash_setting, sizeof(openosdx_setting_t));
-            DEBUG_PRINTF("vtx_update");
+            DEBUG_PRINTF("setting_flash");
             setting_print();
         }
     }

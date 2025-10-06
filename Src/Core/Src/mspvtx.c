@@ -552,6 +552,7 @@ void mspUpdate(void)
 void mspVtx_init(void)
 {
     mspState = MSP_STATE_GET_VTX_TABLE_SIZE;
+    DEBUG_PRINTF("call setVtx()");
     setVtx(channelFreqTable[setting()->channel], saPowerLevelsLut[setting()->powerIndex]);
 }
 
