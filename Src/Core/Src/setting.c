@@ -54,7 +54,6 @@ void setting_update(void)
             update_time = 0;
             flash_erase((uint32_t)&flash_setting, sizeof(openosdx_setting_t));
             flash_write((uint32_t)&flash_setting, (uint8_t*)&openosdx_setting, sizeof(openosdx_setting_t));
-            memcpy(&openosdx_setting_backup, &flash_setting, sizeof(openosdx_setting_t));
             DEBUG_PRINTF("setting_flash");
             setting_print();
         }
