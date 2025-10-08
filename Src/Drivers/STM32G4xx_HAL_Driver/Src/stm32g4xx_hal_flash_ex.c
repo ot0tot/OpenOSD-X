@@ -135,6 +135,7 @@ static uint32_t          FLASH_OB_GetBootLock(void);
   *         the pages have been correctly erased).
   * @retval HAL_Status
   */
+__attribute__((section (".ccmram_code"), optimize("O1")))
 HAL_StatusTypeDef HAL_FLASHEx_Erase(FLASH_EraseInitTypeDef *pEraseInit, uint32_t *PageError)
 {
   HAL_StatusTypeDef status;

@@ -108,7 +108,7 @@ SECTIONS
 /* Setting */
 
 /* vpdtable */
-  .setting (NOLOAD) :  {
+  .vpdtable (NOLOAD) :  {
     . = ALIGN(4);
     _vpdtable = .;        /* define a global symbols at start */
     *(.vpdtable)

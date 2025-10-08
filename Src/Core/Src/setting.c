@@ -17,7 +17,8 @@ const openosdx_setting_t openosdx_setting_default = {
         0x3c5e          // magic
 };
 
-openosdx_setting_t openosdx_setting, openosdx_setting_backup;
+openosdx_setting_t openosdx_setting  __attribute__((aligned(8)));
+openosdx_setting_t openosdx_setting_backup  __attribute__((aligned(8)));
 
 __attribute__((section(".setting")))
 const openosdx_setting_t flash_setting = {0xffff,0xffff,0xffff,0xffff,0xffff,0xffff};

@@ -170,7 +170,7 @@ static void          FLASH_Program_Fast(uint32_t Address, uint32_t DataAddress);
   *
   * @retval HAL_Status
   */
-__attribute__((section (".ccmram_code"), optimize("O2")))
+__attribute__((section (".ccmram_code"), optimize("O1")))
 HAL_StatusTypeDef HAL_FLASH_Program(uint32_t TypeProgram, uint32_t Address, uint64_t Data)
 {
   HAL_StatusTypeDef status;
