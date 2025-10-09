@@ -127,7 +127,7 @@ extern int32_t canvas_v_offset[];
 extern VIDEO_FORMAT video_format;
 extern int32_t canvas_v[];
 #define FONT_SIZE   64
-extern const uint8_t font[256][FONT_SIZE];
+extern uint8_t font[256][FONT_SIZE];
 void SetLine(register volatile uint32_t *data, register volatile uint8_t *buf, int line);
 void rebootDfu(void);
 

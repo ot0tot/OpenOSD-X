@@ -9,6 +9,8 @@ typedef struct
     uint16_t videoFormat;
     uint16_t vref_init;
     uint16_t magic;
+    uint16_t pad1;
+    uint16_t pad2;
 } openosdx_setting_t;
 
 

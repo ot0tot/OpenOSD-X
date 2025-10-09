@@ -633,7 +633,7 @@ int main(void)
     HAL_DAC_Init(&hdac1);
     HAL_DAC_MspInit(&hdac1);
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (0xfff*1500)/3300);    // WHITE:1.5v (Foxeer OSD is 1.5mV)
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (0xfff*1500)/3300);    // WHITE:1.5v (Foxeer OSD is 1.5V)
 
     HAL_DAC_Init(&hdac3);
     HAL_DAC_MspInit(&hdac3);

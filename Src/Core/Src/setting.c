@@ -14,13 +14,16 @@ const openosdx_setting_t openosdx_setting_default = {
         2,              // powerIndex
         1,              // videoFormat
         1800,           // vref_init
-        0x3c5e          // magic
-};
+        0x3c5e,          // magic
+        0,              // pad1
+        0               // pad2    
+    };
 
-openosdx_setting_t openosdx_setting, openosdx_setting_backup;
+openosdx_setting_t openosdx_setting  __attribute__((aligned(8)));
+openosdx_setting_t openosdx_setting_backup  __attribute__((aligned(8)));
 
 __attribute__((section(".setting")))
-const openosdx_setting_t flash_setting = {0xffff,0xffff,0xffff,0xffff,0xffff,0xffff};
+openosdx_setting_t flash_setting;
 
 
 
@@ -54,7 +57,6 @@ void setting_update(void)
             update_time = 0;
             flash_erase((uint32_t)&flash_setting, sizeof(openosdx_setting_t));
             flash_write((uint32_t)&flash_setting, (uint8_t*)&openosdx_setting, sizeof(openosdx_setting_t));
-            memcpy(&openosdx_setting_backup, &flash_setting, sizeof(openosdx_setting_t));
             DEBUG_PRINTF("setting_flash");
             setting_print();
         }
