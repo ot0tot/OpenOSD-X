@@ -27,7 +27,7 @@
 
 ## 設定方法
 
-1. カメラ、OpenVTX、FC、PC を接続する
+1. カメラ、OpenODS-X、FC、PC を接続する
 2. すべての機器に電源を供給する。必要に応じてバッテリーも接続する。
 3. Betaflight Configurator を起動する
 4. シリアルポート設定
@@ -80,7 +80,7 @@ Betaflight Configurator からフォントアップデートが可能です
 
 ---
 
-# 開発者向け情報
+# ハード開発者向け情報
 
 ## リファレンス回路図・ブロック図
 
@@ -132,6 +132,39 @@ TX 調整や VPD テーブル作成に使用する開発用ファーム。
 目的の送信出力になるよう電圧を調整し、結果をまとめたものが VPD テーブルとなる。
 
 ---
+
+
+# ファーム開発者向け情報
+
+## build方法
+cmakeを利用した一般的な手法でbuildします
+- 事前にsrecordをインストールします
+  ```
+  $ sudo apt-get install -y srecord
+  ```
+- buildします
+  ```
+  $ mkdir -p build && cd build
+  $ cmake -DTARGET=brakoutboard ..
+  $ make
+  ```
+- cmakeのオプション例
+  ```
+  $ cmake -DTARGET=novtx    vtx機能なし
+  $ cmake -DRESOLUTION_HD=ON    HD版 　　
+  ```
+
+##  flash memory map
+
+| address | note |
+| --- | --- |
+| 0801F800 | 個別のVPDテーブル(オプション) |
+| 0801B800 | フォント |
+| 0801B000 | 設定保存 |
+| 08004200 | OpenOSD-X本体 |
+| 08004000 | OpenOSD-Xヘッダ情報(CRCなど。bootloaderが参照します) |
+| 08000000 | bootloader |
+
 
 ## Developers Channel
 
