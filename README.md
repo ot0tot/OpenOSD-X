@@ -166,14 +166,24 @@ Build using standard **cmake** procedures.
 
 ## Flash Memory Map
 
-| Address  | Description                                     |
-| -------- | ----------------------------------------------- |
-| 0801F800 | Custom VPD table (optional)                     |
-| 0801B800 | Font                                            |
-| 0801B000 | Configuration data                              |
-| 08004200 | OpenOSD-X main program                          |
-| 08004000 | OpenOSD-X header info (CRC, used by bootloader) |
-| 08000000 | Bootloader                                      |
+| Address           | Description |
+| ----------------- | ----------- |
+| 0801F800–0801FFFF | Per-device VPD table (optional) |
+| 0801B800–0801F7FF | Font data |
+| 0801B000–0801B7FF | Configuration storage |
+| 08004200–0801AFFF | OpenOSD-X application |
+| 08004000–080041FF | OpenOSD-X application header |
+| 08000000–08003FFF | Bootloader |
+
+### Application Header
+
+| Address           | Description |
+| ----------------- | ----------- |
+| 08004000–08004003 | Application size |
+| 08004004–08004007 | Application CRC (STM32) |
+| 08004080–0800408F | Board name (string) |
+| 08004090–0800409F | Version (string) |
+
 
 ---
 
