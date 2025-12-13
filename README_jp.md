@@ -161,9 +161,17 @@ cmakeを利用した一般的な手法でbuildします
 | 0801F800 | 個別のVPDテーブル(オプション) |
 | 0801B800 | フォント |
 | 0801B000 | 設定保存 |
-| 08004200 | OpenOSD-X本体 |
-| 08004000 | OpenOSD-Xヘッダ情報(CRCなど。bootloaderが参照します) |
+| 08004200 | OpenOSD-X application |
+| 08004000 | OpenOSD-X application-header |
 | 08000000 | bootloader |
+
+###  application-header
+| address | note |
+| --- | --- |
+| 08004000-08004003 | applicationのサイズ |
+| 08004004-08004007 | applicationのCRC(STM32) |
+| 08004080-0800408F | ボード名称(文字列) |
+| 08004090-0800409F | バージョン(文字列) |
 
 
 ## Developers Channel
