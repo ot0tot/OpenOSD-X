@@ -122,6 +122,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ./Src/Core/Src/flash.c
     ./Src/Core/Src/videosignal_gen.c
     ./Src/Core/Src/setting.c
+    ./Src/Core/Src/temp.c
+    ./Src/Core/Src/target.c
     ./Src/Core/Startup/startup_stm32g431kbtx.s
     ${RTT_SOURCES}
     ${CLI_SOURCES}

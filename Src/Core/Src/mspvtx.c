@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include "target.h"
 #include "vtx.h"
 #include "log.h"
 #include "msp.h"
@@ -31,7 +32,6 @@
 
 // VTX Table Default Values
 #define VTX_DEFAULT_BAND_CHAN_INDEX 27   // Default channel index (F4, 5800MHz)
-#define VTX_DEFAULT_POWER_INDEX     3    // Default power level index (25mW)
 #define VTX_DEFAULT_PITMODE_STATE   0    // Default PIT mode state (OFF)
 #define VTX_DEFAULT_LP_DISARM_STATE 0    // Default Low Power Disarm state (OFF)
 
@@ -39,13 +39,9 @@
 #define VTX_TABLE_SHOULD_BE_CLEARED 1
 #define VTX_TABLE_NEW_BAND_COUNT    6
 #define CHANNEL_COUNT 8
-#define VTX_TABLE_NEW_POWER_COUNT   4
 #define FREQ_TABLE_SIZE 48
 #define IS_FACTORY_BAND                 0
-#define SA_NUM_POWER_LEVELS         VTX_TABLE_NEW_POWER_COUNT
-#define RACE_MODE                       2
 #define RACE_MODE_POWER                 14 // dBm
-#define POWER_LEVEL_LABEL_LENGTH    3
 
 /**
  * @brief State machine for managing MSP communication between VTX and FC.
@@ -120,15 +116,6 @@ uint16_t channelFreqTable[FREQ_TABLE_SIZE] = {
     5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917, // R
     5333, 5373, 5413, 5453, 5493, 5533, 5573, 5613  // L
 };
-#ifdef TARGET_BREAKOUTBOARD
-
-uint8_t saPowerLevelsLut[SA_NUM_POWER_LEVELS] = {1, RACE_MODE, 14, 20};
-uint8_t saPowerLevelsLabel[SA_NUM_POWER_LEVELS * POWER_LEVEL_LABEL_LENGTH] = {'0', ' ', ' ',
-                                                                              'R', 'C', 'E',
-                                                                              '2', '5', ' ',
-                                                                              '1', '0', '0'};
-//                                                                              '4', '0', '0'};
-#endif
 
 uint8_t pitMode = 0;
 
@@ -494,7 +481,8 @@ void mspvtx_Ack(uint16_t function)
  */
 void mspUpdate(void)
 {
-    static uint8_t initFreqPacketRecived = 0;
+    static bool initFreqPacketRecived = false;
+    static uint16_t logcount = 0;
 
     uint32_t now = HAL_GetTick();
 
@@ -504,7 +492,10 @@ void mspUpdate(void)
     // Update the next query time (acts as a timeout if no reply is received).
     nextFlightControllerQueryTime = now;
 
-    DEBUG_PRINTF("mspState:%s", mspStaetString[(uint8_t)mspState]);
+    if ( logcount % 10 == 0){
+        DEBUG_PRINTF("mspState:%s", mspStaetString[(uint8_t)mspState]);
+    }
+    logcount = (logcount +1 ) % 10;
 
     switch (mspState)
     {
@@ -523,7 +514,7 @@ void mspUpdate(void)
         case SET_DEFAULTS:
             setDefaultBandChannelPower();
             // Apply default settings to the VTX immediately, in sync with the FC.
-            initFreqPacketRecived = 1;
+            initFreqPacketRecived = true;
             pitMode = VTX_DEFAULT_PITMODE_STATE;
             setting()->powerIndex = VTX_DEFAULT_POWER_INDEX - 1;
             setting()->channel = VTX_DEFAULT_BAND_CHAN_INDEX;
@@ -538,7 +529,7 @@ void mspUpdate(void)
             // This ensures the VTX operates with EEPROM values until the first
             // valid settings are received from the FC at startup.
             if (!initFreqPacketRecived) {
-                initFreqPacketRecived = 1;
+                initFreqPacketRecived = true;
                 setVtx(channelFreqTable[setting()->channel], saPowerLevelsLut[setting()->powerIndex]);
             }
             break;
