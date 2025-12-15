@@ -22,16 +22,18 @@
 
 #endif
 
+#ifndef TARGET_NOVTX
 typedef struct vpd_table_def {
     char magic[4];
     uint16_t calFreqs[CAL_FREQ_SIZE];
     uint8_t calDBm[CAL_DBM_SIZE];
     uint16_t calVpd[CAL_DBM_SIZE][CAL_FREQ_SIZE];
 } vpd_table_t;
-
 extern const vpd_table_t vpd_table;
 extern uint8_t saPowerLevelsLut[SA_NUM_POWER_LEVELS];
 extern uint8_t saPowerLevelsLabel[SA_NUM_POWER_LEVELS * POWER_LEVEL_LABEL_LENGTH];
+#endif
+
 
 #endif
 
