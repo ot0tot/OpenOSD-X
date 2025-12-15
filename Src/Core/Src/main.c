@@ -32,6 +32,7 @@
 #include "log.h"
 #include "rtc6705.h"
 #include "vtx.h"
+#include "temp.h"
 #include "uart_dma.h"
 #include "videosignal_gen.h"
 #include "flash.h"
@@ -259,7 +260,7 @@ void SetLine(register volatile uint32_t *data, register volatile uint8_t *buf, i
 __attribute__((section (".ccmram_code"), optimize("O2")))
 void intHsyncFallEdge(void)
 {
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
+//    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
 
     if (state != STATE_DISABLE){
         volatile uint32_t uwIC1Value = TIM2->CCR1;      // down to down edge
@@ -291,7 +292,7 @@ void intHsyncFallEdge(void)
         sync_detect(detect_sync);
     }
 
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
+//    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
 }
 
 uint32_t sync_count = 0;                // for detect sync lost
@@ -657,6 +658,7 @@ int main(void)
 #ifndef TARGET_NOVTX
     initVtx();
     mspVtx_init();
+    initTemp();
 #endif
 
 #ifdef DEV_MODE
@@ -723,6 +725,7 @@ int main(void)
     procSysTimer();
     sync_proc();
 #ifndef TARGET_NOVTX
+    procTemp();
     procVtx();
 #endif
 
@@ -741,7 +744,7 @@ int main(void)
         DEBUG_PRINTF("%s : %s(%d)", state_str[state], VIDEO_FORMAT_STR, video_line_last);
         DEBUG_PRINTF("pluse_level %dmv(%d-%d)",(pluse_level_high+pluse_level_low)/2, pluse_level_high, pluse_level_low);
 #ifndef TARGET_NOVTX
-        debuglogVtx();
+        debuglogVtx("main");
 #endif
 //        DEBUG_PRINTF("IC1=%d IC2=%d", uwIC1Value, uwIC2Value);
 
@@ -835,7 +838,11 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.DMAContinuousRequests = DISABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-  hadc1.Init.OversamplingMode = DISABLE;
+  hadc1.Init.OversamplingMode = ENABLE;
+  hadc1.Init.Oversampling.Ratio = ADC_OVERSAMPLING_RATIO_256;
+  hadc1.Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_4;
+  hadc1.Init.Oversampling.TriggeredMode = ADC_TRIGGEREDMODE_SINGLE_TRIGGER;
+  hadc1.Init.Oversampling.OversamplingStopReset = ADC_REGOVERSAMPLING_CONTINUED_MODE;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
@@ -851,9 +858,9 @@ static void MX_ADC1_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_4;
+  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR_ADC1;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -916,7 +923,7 @@ static void MX_ADC2_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;        /* 1/60MHz * 640.5 * 256(oversmple) = 2.7ms */
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;

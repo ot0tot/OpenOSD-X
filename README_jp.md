@@ -156,18 +156,18 @@ cmakeを利用した一般的な手法でbuildします
 
 ##  flash memory map
 
-| address | note |
-| --- | --- |
-| 0801F800 | 個別のVPDテーブル(オプション) |
-| 0801B800 | フォント |
-| 0801B000 | 設定保存 |
-| 08004200 | OpenOSD-X application |
-| 08004000 | OpenOSD-X application-header |
-| 08000000 | bootloader |
+| address           | note |
+| ----------------- | --- |
+| 0801F800-0801FFFF | 個別のVPDテーブル(オプション) |
+| 0801B800-0801F7FF | フォント |
+| 0801B000-0801B7FF | 設定保存 |
+| 08004200-0801AFFF | OpenOSD-X application |
+| 08004000-080041FF | OpenOSD-X application-header |
+| 08000000-08003FFF | bootloader |
 
 ###  application-header
-| address | note |
-| --- | --- |
+| address           | note |
+| ----------------- | --- |
 | 08004000-08004003 | applicationのサイズ |
 | 08004004-08004007 | applicationのCRC(STM32) |
 | 08004080-0800408F | ボード名称(文字列) |
