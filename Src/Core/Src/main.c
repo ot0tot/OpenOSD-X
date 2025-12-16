@@ -701,6 +701,8 @@ int main(void)
         charCanvasWrite(7,1, (uint8_t*)buf, strlen(buf));
         sprintf(buf,"VREF........%04dMV", getVref());
         charCanvasWrite(8,1, (uint8_t*)buf, strlen(buf));
+        sprintf(buf,"TEMP..........%03ld\xe", getTemp());
+        charCanvasWrite(8,1, (uint8_t*)buf, strlen(buf));
         charCanvasDraw();
     }
 #else
