@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 set(CMAKE_PROJECT_NAME openosd-x)
 
-set(PRJ_VERSION "0.1.2")
+set(PRJ_VERSION "0.1.3")
 #set(PRJ_VERSION "")
 
 
