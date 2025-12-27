@@ -170,6 +170,7 @@ static void          FLASH_Program_Fast(uint32_t Address, uint32_t DataAddress);
   *
   * @retval HAL_Status
   */
+__attribute__((section (".ccmram_code"), optimize("O1")))
 HAL_StatusTypeDef HAL_FLASH_Program(uint32_t TypeProgram, uint32_t Address, uint64_t Data)
 {
   HAL_StatusTypeDef status;
@@ -675,6 +676,7 @@ uint32_t HAL_FLASH_GetError(void)
   * @param  Timeout maximum flash operation timeout.
   * @retval HAL_Status
   */
+__attribute__((section (".ccmram_code"), optimize("O2")))
 HAL_StatusTypeDef FLASH_WaitForLastOperation(uint32_t Timeout)
 {
   /* Wait for the FLASH operation to complete by polling on BUSY flag to be reset.
@@ -722,6 +724,7 @@ HAL_StatusTypeDef FLASH_WaitForLastOperation(uint32_t Timeout)
   * @param  Data specifies the data to be programmed.
   * @retval None
   */
+__attribute__((section (".ccmram_code"), optimize("O2")))
 static void FLASH_Program_DoubleWord(uint32_t Address, uint64_t Data)
 {
   /* Check the parameters */
@@ -747,6 +750,7 @@ static void FLASH_Program_DoubleWord(uint32_t Address, uint64_t Data)
   * @param  DataAddress specifies the address where the data are stored.
   * @retval None
   */
+__attribute__((section (".ccmram_code"), optimize("O2")))
 static void FLASH_Program_Fast(uint32_t Address, uint32_t DataAddress)
 {
   uint8_t row_index = (2 * FLASH_NB_DOUBLE_WORDS_IN_ROW);

@@ -36,6 +36,9 @@ extern "C" {
 #include "stm32g4xx_ll_dac.h"
 #include "stm32g4xx_ll_usart.h"
 #include "stm32g4xx_ll_dac.h"
+#include "stm32g4xx_ll_pwr.h"
+#include "stm32g4xx_ll_rcc.h"
+#include "stm32g4xx_ll_bus.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -44,17 +47,17 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
-//#define PIX_540
-
-#ifdef PIX_540
+#ifdef RESOLUTION_HD
 
 #define ROW_SIZE_NTSC 26
 #define ROW_SIZE_PAL 32
 #define COLUMN_SIZE 45
 #define CANVAS_H_R  540
 #define CANVAS_H_OFFSET   76       // 4pix(1byte) aligne
+#define CANVAS_H_OFFSET_GEN   64       // 4pix(1byte) aligne
 #define PIX_PERIOD 14               // period =14+1 =15
-#define VIDEO_GEN_LINE_SIZE  720    // 170MHz/15734Hz/15=720 ... mod4=0
+#define VIDEO_GEN_LINE_NTSC  720    // 170MHz/15734Hz/15=720 ... mod4=0
+#define VIDEO_GEN_LINE_PAL   724    // 170MHz/15625Hz/15=724 ... mod4=0
 #define VIDEO_TIM_NS(t)    (t/88)
 
 #else
@@ -63,25 +66,30 @@ extern "C" {
 #define ROW_SIZE_PAL 16
 #define COLUMN_SIZE 30
 #define CANVAS_H_R  360
-#define CANVAS_H_OFFSET   48       // 4pix(1byte) aligne
-#define PIX_PERIOD 21               // period=21+1=22
-#define VIDEO_GEN_LINE_SIZE  492    // 170MHz/15734Hz/22=492  ... mod4=0
-#define VIDEO_TIM_NS(t)    (t/129)
+#define CANVAS_H_OFFSET   36       // 4pix(1byte) aligne
+#define CANVAS_H_OFFSET_GEN   28       // 4pix(1byte) aligne
+#define PIX_PERIOD 23               // period=23+1=24
+#define VIDEO_GEN_LINE_NTSC  448    // 170MHz/15734Hz/24=450.2= --mod4--> 448
+#define VIDEO_GEN_LINE_PAL   452    // 170MHz/15625Hz/24=453.3 --mod4--> 452
+
+#define VIDEO_TIM_NS(t)    (t/141)
 
 #endif
 
-#define CANVAS_H   (CANVAS_H_R + CANVAS_H_OFFSET)
+#define CANVAS_H        (CANVAS_H_R + CANVAS_H_OFFSET)
 #define CANVAS_V_OFFSET_NTSC    32
-#define CANVAS_V_OFFSET_PAL     44
+#define CANVAS_V_OFFSET_PAL     36
+#define CANVAS_V_OFFSET_NTSC_GEN    16
+#define CANVAS_V_OFFSET_PAL_GEN     16
 #define CANVAS_V_NTSC           (234*2)     /* 18pix * 13char */
 #define CANVAS_V_PAL            (288*2)     /* 18pix * 16char */
+#define ROW_SIZE_MAX 32
+#define COLUMN_SIZE_MAX 45
 
 typedef enum {
-    VIDEO_UNKNOWN = 0,
-    VIDEO_NTSC,
+    VIDEO_NTSC = 0,
     VIDEO_PAL
 }VIDEO_FORMAT;
-extern VIDEO_FORMAT video_format;
 
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
@@ -101,15 +109,27 @@ extern DMA_HandleTypeDef hdma_tim1_up;
 extern DMA_HandleTypeDef hdma_tim8_up;
 extern UART_HandleTypeDef huart1;
 
+typedef enum {
+    DETECT_UNKNOWN =0,
+    DETECT_HSYNC,
+    DETECT_VSYNC,
+    DETECT_EQUIVALENT,
+}DETECT_SYNC;
+
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 extern int32_t canvas_v_offset[];
 extern VIDEO_FORMAT video_format;
+extern int32_t canvas_v_offset[];
+extern VIDEO_FORMAT video_format;
+extern int32_t canvas_v[];
 #define FONT_SIZE   64
-extern const uint8_t font[256][FONT_SIZE];
+extern uint8_t font[256][FONT_SIZE];
 void SetLine(register volatile uint32_t *data, register volatile uint8_t *buf, int line);
+void rebootDfu(void);
 
 /* USER CODE END EC */
 
@@ -126,6 +146,7 @@ void enableOSD(bool en);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+void osd_enable(uint8_t en);
 void intHsyncFallEdge(void);
 
 /* USER CODE END EFP */
@@ -151,6 +172,8 @@ void intHsyncFallEdge(void);
 #define BLK 0x138800ed  // VINP3
 #define WHI 0x138800e1  // VINP0
 #define TRS 0x138800e9  // VINP2
+
+#define BOOTLOADER_DFU_MAGIC    0x8FA3D62C
 
 /* USER CODE BEGIN Private defines */
 

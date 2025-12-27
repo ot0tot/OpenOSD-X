@@ -5,137 +5,268 @@
 #include "stm32g4xx_ll_dma.h"
 #include "main.h"
 #include "char_canvas.h"
+#include "setting.h"
 
 typedef void (*videoGenFunc)(uint16_t *buf, uint16_t size, uint16_t line);
-void videoGenEP(uint16_t *buf, uint16_t size, uint16_t line);
+void videoGenEpNTSC(uint16_t *buf, uint16_t size, uint16_t line);
+void videoGenEpPAL(uint16_t *buf, uint16_t size, uint16_t line);
 void videoGenBLK(uint16_t *buf, uint16_t size, uint16_t line);
 void videoGenVSYN(uint16_t *buf, uint16_t size, uint16_t line);
+void videoGenVSYNEven(uint16_t *buf, uint16_t size, uint16_t line);
+void videoGenVSYNOdd(uint16_t *buf, uint16_t size, uint16_t line);
 void videoGenHSYN(uint16_t *buf, uint16_t size, uint16_t line);
 void videoGen1stData(uint16_t *buf, uint16_t size, uint16_t line);
 void videoGen2ndData(uint16_t *buf, uint16_t size, uint16_t line);
 
+int32_t canvas_v_offset_gen[]  ={CANVAS_V_OFFSET_NTSC_GEN, CANVAS_V_OFFSET_PAL_GEN};
+
 #define VG_SYN  0
 #define VG_BLK  0x0180
 #define VG_GRY  0x0280
 #define VG_WHI  0x0400
 
-const videoGenFunc videoGenFuncTable[1050] = {
-    videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     // 1-6
-    videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   // 7-12
-    videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     // 13-18
-    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK, // 19-30
-    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    // 31-40
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 41-50
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 51-60
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 61-70
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 71-80
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 81-90
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 91-100
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 101-110
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 111-120
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 121-130
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 131-140
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 141-150
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 151-160
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 161-170
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 171-180
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 181-190
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 191-200
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 201-210
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 211-220
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 221-230
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 231-240
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 241-250
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 251-260
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 261-270
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 271-280
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 281-290
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 291-300
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 301-310
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 311-320
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 321-330
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 331-340
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 341-350
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 351-360
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 361-370
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 371-380
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 381-390
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 391-400
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 401-410
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 411-420
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 421-430
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 431-440
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 441-450
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 451-460
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 461-470
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 471-480
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 481-490
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 491-500
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 501-510
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 511-520
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData, // 521-525
-
-    videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     // 526-531
-    videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   // 532-537
-    videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenEP,     videoGenBLK,      // 538-544
-    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,  // 545-555
-
-    videoGen2ndData,videoGen1stData,videoGen2ndData, videoGen1stData,videoGen2ndData, // 556-560
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 561-570
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 571-580
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 581-590
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 591-600
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 601-610
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 611-620
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 621-630
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 631-640
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 641-650
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 651-660
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 661-670
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 671-680
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 681-690
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 691-700
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 701-710
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 711-720
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 721-730
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 731-740
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 741-750
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 751-760
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 761-770
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 771-780
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 781-790
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 791-800
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 801-810
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 811-820
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 821-830
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 831-840
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 841-850
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 851-860
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 861-870
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 871-880
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 881-890
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 891-900
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 901-910
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 911-920
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 921-930
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 931-940
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 941-950
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 951-960
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 961-970
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 971-980
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 981-990
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 991-1000
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1001-1010
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1011-1020
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1021-1030
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1031-1040
-    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1041-1050
+const videoGenFunc videoGenFuncTable[2][1251] = {
+    {
+        // ntsc
+        videoGenEpNTSC,   videoGenEpNTSC, videoGenEpNTSC, videoGenEpNTSC, videoGenEpNTSC, videoGenEpNTSC,     // 1-6
+        videoGenVSYN,     videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYNEven,   // 7-12
+        videoGenEpNTSC,   videoGenEpNTSC, videoGenEpNTSC, videoGenEpNTSC, videoGenEpNTSC, videoGenEpNTSC,     // 13-18
+        videoGenHSYN,     videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK, // 19-30
+        videoGenHSYN,     videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,     // 31-40
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 41-50
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 51-60
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 61-70
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 71-80
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 81-90
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 91-100
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 101-110
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 111-120
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 121-130
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 131-140
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 141-150
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 151-160
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 161-170
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 171-180
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 181-190
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 191-200
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 201-210
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 211-220
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 221-230
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 231-240
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 241-250
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 251-260
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 261-270
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 271-280
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 281-290
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 291-300
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 301-310
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 311-320
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 321-330
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 331-340
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 341-350
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 351-360
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 361-370
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 371-380
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 381-390
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 391-400
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 401-410
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 411-420
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 421-430
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 431-440
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 441-450
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 451-460
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 461-470
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 471-480
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 481-490
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 491-500
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 501-510
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 511-520(260)
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData, // 521-525
+        videoGenEpNTSC,   videoGenEpNTSC, videoGenEpNTSC, videoGenEpNTSC, videoGenEpNTSC, videoGenEpNTSC,     // 526-531
+        videoGenVSYN,     videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYNOdd,   // 532-537
+        videoGenEpNTSC,   videoGenEpNTSC, videoGenEpNTSC, videoGenEpNTSC, videoGenEpNTSC, videoGenEpNTSC,      // 538-543
+        videoGenBLK,      videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,videoGenBLK,videoGenHSYN,    // 544-555
+        videoGenBLK,      videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,    // 556-565
+        videoGenBLK,      videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,    // 566-570
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 571-580
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 581-590
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 591-600
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 601-610
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 611-620
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 621-630
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 631-640
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 641-650
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 651-660
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 661-670
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 671-680
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 681-690
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 691-700
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 701-710
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 711-720
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 721-730
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 731-740
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 741-750
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 751-760
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 761-770
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 771-780
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 781-790
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 791-800
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 801-810
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 811-820
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 821-830
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 831-840
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 841-850
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 851-860
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 861-870
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 871-880
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 881-890
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 891-900
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 901-910
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 911-920
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 921-930
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 931-940
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 941-950
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 951-960
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 961-970
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 971-980
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 981-990
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 991-1000
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1001-1010
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1011-1020
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1021-1030
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1031-1040
+        videoGen1stData,  videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1041-1050
+        NULL
+    },{
+        // pal
+        videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYNOdd,videoGenEpPAL,  videoGenEpPAL,  videoGenEpPAL,  videoGenEpPAL,  videoGenEpPAL,   // 1-10
+        videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,     // 11-20
+        videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,     // 21-30
+        videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,     // 31-40
+        videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 41-50
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 51-60
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 61-70
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 71-80
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 81-90
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 91-100
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 101-110
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 111-120
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 121-130
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 131-140
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 141-150
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 151-160
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 161-170
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 171-180
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 181-190
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 191-200
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 201-210
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 211-220
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 221-230
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 231-240
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 241-250
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 251-260
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 261-270
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 271-280
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 281-290
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 291-300
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 301-310
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 311-320
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 321-330
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 331-340
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 341-350
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 351-360
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 361-370
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 371-380
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 381-390
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 391-400
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 401-410
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 411-420
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 421-430
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 431-440
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 441-450
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 451-460
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 461-470
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 471-480
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 481-490
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 491-500
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 501-510
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 511-520
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 521-530
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 531-540
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 541-550
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 551-560
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 561-570
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 571-580
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 581-590
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 591-600
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 601-610
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 611-620
+        videoGenEpPAL,  videoGenEpPAL,  videoGenEpPAL,  videoGenEpPAL,  videoGenEpPAL,  videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYN,   videoGenVSYNEven, // 621-630
+        videoGenEpPAL,  videoGenEpPAL,  videoGenEpPAL,  videoGenEpPAL,  videoGenEpPAL,  videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,     // 631-640
+        videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,     // 641-650
+        videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,     // 651-660
+        videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,    videoGenHSYN,   videoGenBLK,     // 661-670
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 671-680
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 681-690
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 691-700
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 701-710
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 711-720
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 721-730
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 731-740
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 741-750
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 751-760
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 761-770
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 771-780
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 781-790
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 791-800
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 801-810
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 811-820
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 821-830
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 831-840
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 841-850
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 851-860
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 861-870
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 871-880
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 881-890
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 891-900
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 901-910
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 911-920
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 921-930
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 931-940
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 941-950
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 951-960
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 961-970
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 971-980
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 981-990
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 991-1000
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1001-1010
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1011-1020
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1021-1030
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1031-1040
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1041-1050
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1051-1060
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1061-1070
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1071-1080
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1081-1090
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1091-1000
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1101-1110
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1111-1120
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1121-1130
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1131-1140
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1141-1150
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1151-1160
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1161-1170
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1171-1180
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1181-1190
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1191-1200
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1201-1210
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1211-1220
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1221-1230
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData, // 1231-1240
+        videoGen1stData,videoGen2ndData,videoGen1stData,videoGen2ndData,videoGen1stData,videoGenEpPAL,  videoGenEpPAL,  videoGenEpPAL,  videoGenEpPAL,  videoGenEpPAL,   // 1241-1250
+        NULL
+    }
 };
-
-#define VG_SYN  0
-#define VG_BLK  0x0180
-#define VG_GRY  0x0280
-#define VG_WHI  0x0400
 
 //__attribute__((section (".sram2")))
 uint32_t dataTableVG[256][2] = {
@@ -397,14 +528,14 @@ uint32_t dataTableVG[256][2] = {
     {VG_GRY | VG_GRY<<16 , VG_GRY | VG_GRY<<16}    // 0xff
 };
 
+uint8_t video_gen_format = 0;    // 0:ntsc 1:pal
+uint16_t video_gen_line = 0;    // VIDEO_GEN_LINE_X
 uint16_t hpos2nd = 0;
 uint32_t vg_vcanvas_count = 0;
 uint16_t videoGenCount = 0;
 
-// 170MHz/15734Hz/22=492
-//#define VIDEO_GEN_LINE_SIZE  492
 __attribute__((section (".sram2")))
-uint16_t videoBuff[VIDEO_GEN_LINE_SIZE] __attribute__((aligned(4)));
+uint16_t videoBuff[VIDEO_GEN_LINE_PAL] __attribute__((aligned(4)));
 
 //void memset16(register volatile uint16_t *dst, register volatile uint16_t data, register volatile uint16_t len16)
 //{
@@ -469,13 +600,24 @@ void setVideoGenLine(register volatile uint16_t *ldata, uint8_t *buf, int line, 
 
 // equalization pulse
 __attribute__((section (".ccmram_code"), optimize("O2")))
-void videoGenEP(uint16_t *buf, uint16_t size, uint16_t line)
+void videoGenEpNTSC(uint16_t *buf, uint16_t size, uint16_t line)
 {
     UNUSED(line);
 
     uint16_t cnt = 0;
     memset16(&buf[cnt], VG_SYN, VIDEO_TIM_NS(2300) );
     cnt += VIDEO_TIM_NS(2300);
+    memset16(&buf[cnt], VG_BLK, size - cnt);
+}
+
+__attribute__((section (".ccmram_code"), optimize("O2")))
+void videoGenEpPAL(uint16_t *buf, uint16_t size, uint16_t line)
+{
+    UNUSED(line);
+
+    uint16_t cnt = 0;
+    memset16(&buf[cnt], VG_SYN, VIDEO_TIM_NS(2350) );
+    cnt += VIDEO_TIM_NS(2350);
     memset16(&buf[cnt], VG_BLK, size - cnt);
 }
 
@@ -497,6 +639,18 @@ void videoGenVSYN(uint16_t *buf, uint16_t size, uint16_t line)
     cnt += size - VIDEO_TIM_NS(4700);
     memset16(&buf[cnt], VG_BLK, size - cnt);
 }
+__attribute__((section (".ccmram_code"), optimize("O2")))
+void videoGenVSYNEven(uint16_t *buf, uint16_t size, uint16_t line)
+{
+    vg_vcanvas_count = 0;
+    videoGenVSYN(buf, size, line);
+}
+__attribute__((section (".ccmram_code"), optimize("O2")))
+void videoGenVSYNOdd(uint16_t *buf, uint16_t size, uint16_t line)
+{
+    vg_vcanvas_count = 1;
+    videoGenVSYN(buf, size, line);
+}
 
 // hsync
 __attribute__((section (".ccmram_code"), optimize("O2")))
@@ -513,75 +667,69 @@ void videoGenHSYN(uint16_t *buf, uint16_t size, uint16_t line)
 __attribute__((section (".ccmram_code"), optimize("O2")))
 void videoGen1stData(uint16_t *buf, uint16_t size, uint16_t line)
 {
+    UNUSED(line);
     uint16_t cnt = 0;
     memset16(&buf[cnt], VG_SYN, VIDEO_TIM_NS(4700) );
     cnt += VIDEO_TIM_NS(4700);
     memset16(&buf[cnt], VG_BLK, VIDEO_TIM_NS(4700) );
     cnt += VIDEO_TIM_NS(4700);
-    uint16_t offset = ( (cnt & 0x1) + 20 + 1 ) & 0xfffe; // 32bit aligned for setVideoGenLine()
+    uint16_t offset = ( (cnt & 0x1) + (CANVAS_H_OFFSET_GEN>>1) ) & 0xfffe; // 32bit aligned for setVideoGenLine(). uint16_t *buf    @@TODO: adjust offset NTSC/PAL
     memset16(&buf[cnt], VG_GRY, offset);
     cnt += offset;
 
     hpos2nd = size - cnt;
 
-#ifdef PIX_540
-//        int line=0;
-        if (videoGenCount < 525){
-            setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(line*2/18), (line*2) % 18, 0, hpos2nd);
-        }else{
-            setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(((line*2)+1)/18), ((line*2)+1) % 18, 0, hpos2nd);
-        }
+    int32_t canvas_line = (int32_t)vg_vcanvas_count - canvas_v_offset_gen[setting()->videoFormat];
+    if ( canvas_line >= 0 && canvas_line < canvas_v[setting()->videoFormat] ){
+#ifdef RESOLUTION_HD
+            setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(canvas_line/18), canvas_line % 18, 0, hpos2nd);
 #else
-        UNUSED(line);
-        setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(vg_vcanvas_count/18), (vg_vcanvas_count) % 18, 0, hpos2nd);
+            UNUSED(line);
+            setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet((canvas_line>>1)/18), (canvas_line>>1) % 18, 0, hpos2nd);
 #endif
+    }else{
+        memset16(&buf[cnt], VG_GRY, hpos2nd);
+    }
 }
 
 // 2nd data + blank
 __attribute__((section (".ccmram_code"), optimize("O2")))
 void videoGen2ndData(uint16_t *buf, uint16_t size, uint16_t line)
 {
+    UNUSED(line);
     uint16_t cnt = 0;
-
-#ifdef PIX_540
-//        int line;
-        if (videoGenCount < 525){
-            setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(line*2/18), (line*2) % 18, hpos2nd, CANVAS_H_R - hpos2nd);
-        }else{
-            setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(((line*2)+1)/18), ((line*2)+1) % 18, hpos2nd, CANVAS_H_R - hpos2nd);
-        }
+    int32_t canvas_line = (int32_t)vg_vcanvas_count - canvas_v_offset_gen[setting()->videoFormat];
+    if ( canvas_line >= 0 && canvas_line < canvas_v[setting()->videoFormat] ){
+#ifdef RESOLUTION_HD
+        setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(canvas_line/18), canvas_line % 18, hpos2nd, CANVAS_H_R - hpos2nd);
 #else
         (void)line;
-        setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet(vg_vcanvas_count/18), (vg_vcanvas_count) % 18, hpos2nd, CANVAS_H_R - hpos2nd);
+        setVideoGenLine(&buf[cnt], (uint8_t*)charCanvasGet((canvas_line>>1)/18), (canvas_line>>1) % 18, hpos2nd, CANVAS_H_R - hpos2nd);
 #endif
+        cnt += CANVAS_H_R - hpos2nd;
+        memset16(&buf[cnt], VG_GRY, size - cnt);
+    }else{
+        memset16(&buf[cnt], VG_GRY, size - cnt);
+    }
+    vg_vcanvas_count += 2;
 
-    cnt += CANVAS_H_R - hpos2nd;
-    memset16(&buf[cnt], VG_GRY, size - cnt);
 }
-
 // video gen dac interrupt comp
 __attribute__((section (".ccmram_code"), optimize("O2")))
 void dmaComp2cp(DMA_HandleTypeDef *_hdma)
 {
     UNUSED(_hdma);
 
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
+//    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
 
-    videoGenCount = (videoGenCount+1) % 1050;
-    (videoGenFuncTable[videoGenCount])(&videoBuff[VIDEO_GEN_LINE_SIZE/2], VIDEO_GEN_LINE_SIZE/2, vg_vcanvas_count);
-
-    int16_t videoGenCount525 = (videoGenCount % 525)/2 -9;
-    if ( videoGenCount525 >= CANVAS_V_OFFSET_NTSC && videoGenCount525 < CANVAS_V_NTSC ){
-        vg_vcanvas_count++;
-    }
-    if ( (videoGenCount525 % 525) == 1){
-//        HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
+    (videoGenFuncTable[setting()->videoFormat][videoGenCount])(&videoBuff[video_gen_line/2], video_gen_line/2, vg_vcanvas_count);
+    videoGenCount++;
+    if (videoGenFuncTable[setting()->videoFormat][videoGenCount] == NULL){
+        videoGenCount = 0;
         charCanvasNext();
-        vg_vcanvas_count=0;
-//        HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
     }
 
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
+//    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
 }
 
 // video gen dac interrupt half
@@ -589,18 +737,22 @@ __attribute__((section (".ccmram_code"), optimize("O2")))
 void dmaComp2ht(DMA_HandleTypeDef *_hdma)
 {
     UNUSED(_hdma);
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
-    videoGenCount = (videoGenCount+1) % 1050;
-//    (videoGenFuncTable[videoGenCount])(&videoBuff[0], VIDEO_GEN_LINE_SIZE/2, vg_vcanvas_count);
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
+//    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
+    (videoGenFuncTable[setting()->videoFormat][videoGenCount])(&videoBuff[0], video_gen_line/2, vg_vcanvas_count);
+    videoGenCount++;
+    if (videoGenFuncTable[setting()->videoFormat][videoGenCount] == NULL){
+        videoGenCount = 0;
+    }
+//    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
 }
 
 
 void videosignal_gen_start(void)
 {
-#if 0
-//    (videoGenFuncTable[0])(&videoBuff[0], VIDEO_GEN_LINE_SIZE/2);
-//    (videoGenFuncTable[1])(&videoBuff[VIDEO_GEN_LINE_SIZE/2],VIDEO_GEN_LINE_SIZE/2);
+    video_gen_line = (setting()->videoFormat == VIDEO_PAL) ?  VIDEO_GEN_LINE_PAL : VIDEO_GEN_LINE_NTSC;;
+
+    videoGenBLK(&videoBuff[0], video_gen_line/2, 0);
+    videoGenBLK(&videoBuff[video_gen_line/2],video_gen_line/2, 0);
     videoGenCount = 0;
 
     HAL_TIM_Base_MspInit(&htim4);
@@ -620,7 +772,7 @@ void videosignal_gen_start(void)
                                            LL_DMA_CHANNEL_1,
                                            (uint32_t)&videoBuff[0], (uint32_t)&(DAC3->DHR12R1),
                                            LL_DMA_GetDataTransferDirection(DMA2, LL_DMA_CHANNEL_1));
-    LL_DMA_SetDataLength(DMA2, LL_DMA_CHANNEL_1, VIDEO_GEN_LINE_SIZE); 
+    LL_DMA_SetDataLength(DMA2, LL_DMA_CHANNEL_1, video_gen_line); 
 
     LL_DMA_EnableIT_HT(DMA2, LL_DMA_CHANNEL_1);
     LL_DMA_EnableIT_TC(DMA2, LL_DMA_CHANNEL_1);
@@ -633,12 +785,10 @@ void videosignal_gen_start(void)
     LL_DAC_SetTriggerSource(DAC3, LL_DAC_CHANNEL_1, LL_DAC_TRIG_EXT_TIM4_TRGO);
     LL_DAC_Enable(DAC3, LL_DAC_CHANNEL_1);
     LL_TIM_EnableCounter(TIM4);
-#endif
 }
 
 void videosignal_gen_stop(void)
 {
-#if 0
     LL_TIM_DisableCounter(TIM4);
     LL_DAC_SetTriggerSource(DAC3, LL_DAC_CHANNEL_1, LL_DAC_TRIG_SOFTWARE);
 
@@ -647,6 +797,5 @@ void videosignal_gen_stop(void)
     LL_DAC_DisableDMAReq(DAC3, LL_DAC_CHANNEL_1);
     LL_DMA_DisableIT_TC(DMA2, LL_DMA_CHANNEL_1);
     LL_DMA_DisableIT_HT(DMA2, LL_DMA_CHANNEL_1);
-#endif
 }
 

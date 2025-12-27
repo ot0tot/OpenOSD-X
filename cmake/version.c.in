@@ -1,0 +1,7 @@
+#include <stdio.h>
+
+const char* build_target   = "@TARGET@";
+const char* build_version  = "@PROJECT_VERSION@";
+const char* build_type     = "@CMAKE_BUILD_TYPE@";
+const char* build_date     = __DATE__ " " __TIME__;
+

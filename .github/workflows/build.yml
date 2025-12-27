@@ -3,38 +3,77 @@ name: build
 env:
   BUILD_TYPE: Release
 
-# Triggers the workflow on push or pull request events
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        resolution: [sd, hd]
+        target: [breakoutboard,novtx]
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Install Arm GNU Toolchain (arm-none-eabi-gcc)
-      uses: carlosperate/arm-none-eabi-gcc-action@v1
-      with:
-        release: '14.2.Rel1' # <-- The compiler release to use
+      - uses: actions/checkout@v4
 
-    - name : Create build directory
-      run: mkdir -p build
+      - name: Install Arm GNU Toolchain (arm-none-eabi-gcc)
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '14.2.Rel1' # <-- The compiler release to use
 
-    - name: build
-      working-directory: ./build  
-      run: |
-        cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
-        make -j4
+      - name: Install srec_cat
+        run: sudo apt-get update && sudo apt-get install -y srecord
 
-    - name: Download Artifacts HEX
-      uses: actions/upload-artifact@v4
-      with:
-        name: "Download artifacts - HEX"
-        path: ${{runner.workspace}}/OpenOSD-X/build/*.hex
+      - name: Create build directory
+        run: mkdir -p build_${{ matrix.target }}_${{ matrix.resolution }}
 
-    - name: Download Artifacts BIN
-      uses: actions/upload-artifact@v4
-      with:
-        name: "Download artifacts - BIN"
-        path: ${{runner.workspace}}/OpenOSD-X/build/*.bin
+      - name: Configure CMake
+        working-directory: build_${{ matrix.target }}_${{ matrix.resolution }}
+        run: |
+          if [ "${{ matrix.resolution }}" = "hd" ]; then
+            cmake -DRESOLUTION_HD=ON -DTARGET=${{ matrix.target }} -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+          else
+            cmake -DTARGET=${{ matrix.target }} -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+          fi
+
+      - name: Build
+        working-directory: ./build_${{ matrix.target }}_${{ matrix.resolution }}
+        run: make -j4
+
+      - name: Upload HEX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "openosd-x_${{ matrix.target }}_${{ matrix.resolution }}_hex"
+          path: build_${{ matrix.target }}_${{ matrix.resolution }}/*.hex
+
+  build_dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Arm GNU Toolchain (arm-none-eabi-gcc)
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '14.2.Rel1'
+
+      - name: Install srec_cat
+        run: sudo apt-get update && sudo apt-get install -y srecord
+
+      - name: Create build directory (dev)
+        run: mkdir -p build_dev
+
+      - name: Build (dev)
+        working-directory: ./build_dev
+        run: |
+          cmake -DDEV_MODE=ON -DTARGET=breakoutboard -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+          make -j4
+
+      - name: Upload HEX artifact (dev)
+        uses: actions/upload-artifact@v4
+        with:
+          name: "openosd-x_breakoutboard_dev"
+          path: build_dev/*.hex

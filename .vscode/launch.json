@@ -20,8 +20,11 @@
             "postRestartCommands": [
               "monitor speed 4000",
               "monitor clrbp",
-              "monitor reset"
-            ]
+              "monitor reset",
+              "monitor halt",
+              "set $pc = *(uint32_t *)0x08004204",  // Reset vector
+              "set $sp = *(uint32_t *)0x08004200"   // MSP
+             ]
             "runToEntryPoint": "main",
         }
     ]

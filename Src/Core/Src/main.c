@@ -19,6 +19,8 @@
 #include <string.h>
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include "stm32g4xx.h"
+
 #include "main.h"
 #include "sys_timer.h"
 #include "msp.h"
@@ -30,9 +32,11 @@
 #include "log.h"
 #include "rtc6705.h"
 #include "vtx.h"
+#include "temp.h"
 #include "uart_dma.h"
 #include "videosignal_gen.h"
 #include "flash.h"
+#include "setting.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -51,7 +55,8 @@
 #define DEBUG_DAC2 0
 #define DEBUG_VIDEO_STANDARD 0
 
-#define SYNC_COUNT_5MS      148     // 5ms/32us = 156 count, 156count *0.95 = 148count
+#define SYNC_COUNT_5MS          148     // 5ms/32us = 156 count, 156count *0.95 = 148count
+#define SYNC_LOST_CONSEC_MAX    10
 #define SIGNAL_GEN_COUNT    1000/5  // signal lost detect time : 1sec
 
 /* USER CODE END PD */
@@ -79,7 +84,6 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
-TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim16;
 DMA_HandleTypeDef hdma_tim1_up;
 DMA_HandleTypeDef hdma_tim8_up;
@@ -108,24 +112,12 @@ static void MX_ADC2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_OPAMP2_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_TIM8_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 
-typedef enum {
-    DETECT_UNKNOWN =0,
-    DETECT_HSYNC,
-    DETECT_VSYNC,
-    DETECT_EQUIVALENT,
-}DETECT_SYNC;
 
-VIDEO_FORMAT video_format = VIDEO_UNKNOWN;
-char *video_format_str[] = {
-    "UNKNOWN",
-    "NTSC",
-    "PAL"
-};
+#define VIDEO_FORMAT_STR    ((setting()->videoFormat == VIDEO_PAL) ? "PAL" : "NTSC")
 
 typedef enum {
     FRAME_UNKNOWN=0,
@@ -140,6 +132,7 @@ typedef enum {
     STATE_TUNE_PULSE_LEVEL_HIGH,
     STATE_VSYNC_WAIT,
     STATE_SYNC,
+    STATE_DISABLE,
 }STATE;
 STATE state = STATE_LOST;
 
@@ -149,13 +142,15 @@ char *state_str[] = {
     "STATE_TUNE_PULSE_LEVEL_HIGH",
     "STATE_VSYNC_WAIT",
     "STATE_SYNC",
+    "STATE_DISABLE",
 };
 
-int32_t canvas_v_offset[]  ={0, CANVAS_V_OFFSET_NTSC, CANVAS_V_OFFSET_PAL};
-int32_t canvas_v[]         ={0, CANVAS_V_NTSC, CANVAS_V_PAL};
+int32_t canvas_v_offset[]  ={CANVAS_V_OFFSET_NTSC, CANVAS_V_OFFSET_PAL};
+int32_t canvas_v[]         ={CANVAS_V_NTSC, CANVAS_V_PAL};
 
 static uint16_t pluse_level_low = 1000;
 static uint16_t pluse_level_high = 0;
+static uint16_t state_lost_count = 0;
 
 static bool osd_ebable = true;
 
@@ -209,8 +204,30 @@ void sync_detect(DETECT_SYNC detect_sync);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void rebootDfu(void)
+{
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+    LL_PWR_EnableBkUpAccess();
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
+    LL_RCC_EnableRTC();
+    TAMP->BKP0R = BOOTLOADER_DFU_MAGIC;
+    __disable_irq(); 
+    NVIC_SystemReset();
+}
+
 int __io_putchar(uint8_t ch) {
     return ITM_SendChar(ch);
+}
+
+void osd_enable(uint8_t en)
+{
+    if (en){
+        state = STATE_LOST;
+        state_lost_count = 0;
+    }else{
+        state = STATE_DISABLE;
+        videosignal_gen_stop();
+    }
 }
 
 __attribute__((section (".ccmram_code"), optimize("O2")))
@@ -243,40 +260,43 @@ void SetLine(register volatile uint32_t *data, register volatile uint8_t *buf, i
 __attribute__((section (".ccmram_code"), optimize("O2")))
 void intHsyncFallEdge(void)
 {
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
+//    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_SET);
 
-    volatile uint32_t uwIC1Value = TIM2->CCR1;      // down to down edge
-    volatile uint32_t uwIC2Value = TIM2->CCR2;      // down to up edge;
+    if (state != STATE_DISABLE){
+        volatile uint32_t uwIC1Value = TIM2->CCR1;      // down to down edge
+        volatile uint32_t uwIC2Value = TIM2->CCR2;      // down to up edge;
 
-    DETECT_SYNC detect_sync = DETECT_UNKNOWN;
+        DETECT_SYNC detect_sync = DETECT_UNKNOWN;
 
-    #define HSYNC_PERIOD_MIN (572*17)   // 63.5*0.9  ntsc:63.5
-    #define HSYNC_PERIOD_MAX (704*17)   // 64.0*1.1  pal:64.0
-    #define HSYNC_PULSE_MIN (44*17)
-    #define HSYNC_PULSE_MAX (50*17)
-    #define VSYNC_PULSE_MIN (244*17)
-    #define VSYNC_PULSE_MAX (298*17)
-    #define EQUIVALENT_PULSE_MIN    (20*17)
-    #define EQUIVALENT_PULSE_MAX    (26*17)
+        #define HSYNC_PERIOD_MIN (572*17)   // 63.5*0.9  ntsc:63.5
+        #define HSYNC_PERIOD_MAX (704*17)   // 64.0*1.1  pal:64.0
+        #define HSYNC_PULSE_MIN (44*17)
+        #define HSYNC_PULSE_MAX (50*17)
+        #define VSYNC_PULSE_MIN (244*17)
+        #define VSYNC_PULSE_MAX (298*17)
+        #define EQUIVALENT_PULSE_MIN    (20*17)
+        #define EQUIVALENT_PULSE_MAX    (26*17)
 
-    if (    uwIC1Value > HSYNC_PERIOD_MIN && uwIC1Value < HSYNC_PERIOD_MAX &&
-            uwIC2Value > HSYNC_PULSE_MIN && uwIC2Value < HSYNC_PULSE_MAX ){
-                detect_sync = DETECT_HSYNC;
-    } else if ( uwIC1Value > HSYNC_PERIOD_MIN/2 && uwIC1Value < HSYNC_PERIOD_MAX/2 &&
-                uwIC2Value > EQUIVALENT_PULSE_MIN && uwIC2Value < EQUIVALENT_PULSE_MAX ){
-                    detect_sync = DETECT_EQUIVALENT;
-    }else if (  uwIC1Value > HSYNC_PERIOD_MIN/2 && uwIC1Value < HSYNC_PERIOD_MAX/2 &&
-                uwIC2Value > VSYNC_PULSE_MIN && uwIC2Value < VSYNC_PULSE_MAX ){
-                    detect_sync = DETECT_VSYNC;
+        if (    uwIC1Value > HSYNC_PERIOD_MIN && uwIC1Value < HSYNC_PERIOD_MAX &&
+                uwIC2Value > HSYNC_PULSE_MIN && uwIC2Value < HSYNC_PULSE_MAX ){
+                    detect_sync = DETECT_HSYNC;
+        } else if ( uwIC1Value > HSYNC_PERIOD_MIN/2 && uwIC1Value < HSYNC_PERIOD_MAX/2 &&
+                    uwIC2Value > EQUIVALENT_PULSE_MIN && uwIC2Value < EQUIVALENT_PULSE_MAX ){
+                        detect_sync = DETECT_EQUIVALENT;
+        }else if (  uwIC1Value > HSYNC_PERIOD_MIN/2 && uwIC1Value < HSYNC_PERIOD_MAX/2 &&
+                    uwIC2Value > VSYNC_PULSE_MIN && uwIC2Value < VSYNC_PULSE_MAX ){
+                        detect_sync = DETECT_VSYNC;
+        }
+
+        osd_dma(detect_sync);
+        sync_detect(detect_sync);
     }
 
-    osd_dma(detect_sync);
-    sync_detect(detect_sync);
-
-    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
+//    HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, GPIO_PIN_RESET);
 }
 
 uint32_t sync_count = 0;                // for detect sync lost
+uint16_t sync_lost_consec = 0;
 int32_t equivalent_pulse_count = 0;     // ntsc:odd=6,odd=5
 int32_t video_line = 0;
 int32_t video_line_last = 0;
@@ -288,7 +308,7 @@ void sync_detect(DETECT_SYNC detect_sync)
         case DETECT_HSYNC:
             if (frame_odd_even == FRAME_UNKNOWN){
                 if (equivalent_pulse_count & 0x1){
-                    if (video_format == VIDEO_NTSC){
+                    if (setting()->videoFormat == VIDEO_NTSC){
                         frame_odd_even = FRAME_ODD;
                         video_line = 1;
                     }else{
@@ -296,7 +316,7 @@ void sync_detect(DETECT_SYNC detect_sync)
                         video_line = 0;
                     }
                 }else{
-                    if (video_format == VIDEO_NTSC){
+                    if (setting()->videoFormat == VIDEO_NTSC){
                         frame_odd_even = FRAME_EVEN;
                         video_line = 0;
                     }else{
@@ -355,9 +375,9 @@ void osd_dma(DETECT_SYNC detect_sync)
         charCanvasNext();
     }
 
-    int32_t canvas_line = video_line - canvas_v_offset[video_format];
+    int32_t canvas_line = video_line - canvas_v_offset[setting()->videoFormat];
 
-    if ( canvas_line >= 0 && canvas_line < canvas_v[video_format] ){
+    if ( canvas_line >= 0 && canvas_line < canvas_v[setting()->videoFormat] ){
 
         // 1. Stop TIM1
         TIM1->CR1 &= ~TIM_CR1_CEN;
@@ -402,8 +422,8 @@ void osd_dma(DETECT_SYNC detect_sync)
 
     int next_line = canvas_line + 2;
 
-    if ( next_line >= 0 && next_line < canvas_v[video_format] ){
-        #ifdef PIX_540
+    if ( next_line >= 0 && next_line < canvas_v[setting()->videoFormat] ){
+        #ifdef RESOLUTION_HD
             SetLine(&dataBuffer[(next_line>>1) & 0x1][CANVAS_H_OFFSET], (uint8_t*)charCanvasGet(next_line/18), next_line % 18);
         #else
             SetLine(&dataBuffer[(next_line>>1) & 0x1][CANVAS_H_OFFSET], (uint8_t*)charCanvasGet((next_line>>1)/18), (next_line>>1) % 18);
@@ -416,7 +436,6 @@ void osd_dma(DETECT_SYNC detect_sync)
 
 void sync_proc(void)
 {
- static uint16_t state_lost_count = 0;
  static uint32_t state_time = 0;
 
     uint32_t now = HAL_GetTick();
@@ -424,7 +443,6 @@ void sync_proc(void)
         return;
     }
     state_time += 5;
-
 
     switch(state){
         case STATE_LOST:
@@ -471,17 +489,25 @@ void sync_proc(void)
         case STATE_VSYNC_WAIT:
         case STATE_SYNC:
             if (sync_count < SYNC_COUNT_5MS){
-                state = STATE_LOST;
-                pluse_level_low = 1000;
-                state_lost_count = 0;
+                if ( ++sync_lost_consec > SYNC_LOST_CONSEC_MAX){
+                    DEBUG_PRINTF("state:STATE_LOST)");
+                    state = STATE_LOST;
+                    pluse_level_low = 1000;
+                    state_lost_count = 0;
+                }
+            }else{
+                sync_lost_consec = 0;
             }
             if (video_line_last != 0){;
                 if (video_line > 500 && video_line_last < 510) {        // NTSC (262-10)*2= 504
-                    video_format = VIDEO_NTSC;
+                    setting()->videoFormat = VIDEO_NTSC;     // ntsc
                 } else if (video_line > 600 && video_line < 620) {
-                    video_format = VIDEO_PAL;
+                    setting()->videoFormat = VIDEO_PAL;     // pal
                 }
             }
+            break;
+        case STATE_DISABLE:
+            HAL_DAC_SetValue(&hdac3, DAC_CHANNEL_2, DAC_ALIGN_12B_R, (0xfff*pluse_level_high)/3300);
             break;
     }
     sync_count = 0;
@@ -489,7 +515,6 @@ void sync_proc(void)
 
 
 
-#if 0
 __attribute__((section (".ccmram_code"), optimize("O2")))
 bool writeFlashFont(uint16_t addr, uint8_t *data)
 {
@@ -497,13 +522,14 @@ bool writeFlashFont(uint16_t addr, uint8_t *data)
 
     HAL_FLASH_Unlock();
     __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_OPTVERR);
-    if ( addr == 0 ){
+    if ( (addr & 0x1f) == 0 ){
         // erase
-        DEBUG_PRINTF("erase start");
+        uint32_t erase_addr = (uint32_t)&font[addr][0];
+        DEBUG_PRINTF("erase start 0x%x", erase_addr);
         static FLASH_EraseInitTypeDef EraseInitStruct;
         EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
-        EraseInitStruct.Page        = GET_FLASH_PAGE((uint32_t)&font[0]);
-        EraseInitStruct.NbPages     = (sizeof(font) / FLASH_PAGE_SIZE) + 1;
+        EraseInitStruct.Page        = GET_FLASH_PAGE(erase_addr);
+        EraseInitStruct.NbPages     = 1;
         uint32_t PageError = 0;
         if (HAL_FLASHEx_Erase(&EraseInitStruct, &PageError) != HAL_OK){
             ;
@@ -533,7 +559,6 @@ void enableOSD(bool en)
     osd_ebable = en;
 }
 
-#endif
 
 
 
@@ -544,7 +569,6 @@ void enableOSD(bool en)
   * @retval int
   */
 int main(void)
-
 {
 
   /* USER CODE BEGIN 1 */ 
@@ -583,7 +607,6 @@ int main(void)
   MX_TIM3_Init();
   MX_OPAMP2_Init();
   MX_ADC1_Init();
-  MX_TIM8_Init();
   MX_TIM4_Init();
   MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
@@ -591,7 +614,6 @@ int main(void)
     HAL_TIM_Base_MspInit(&htim16);
     initSysTimer();
 
-    uart_init();
     for (int x=0; x<CANVAS_H_OFFSET; x++){
         dataBuffer[0][x] = TRS;
         dataBuffer[1][x] = TRS;
@@ -612,8 +634,7 @@ int main(void)
     HAL_DAC_Init(&hdac1);
     HAL_DAC_MspInit(&hdac1);
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (0xfff*1000)/3300);    // 1v
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (0xfff*1500)/3300);    // 1v
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (0xfff*1500)/3300);    // WHITE:1.5v (Foxeer OSD is 1.5V)
 
     HAL_DAC_Init(&hdac3);
     HAL_DAC_MspInit(&hdac3);
@@ -624,31 +645,21 @@ int main(void)
     HAL_DAC_Start(&hdac3, DAC_CHANNEL_2);
     HAL_TIM_Base_MspInit(&htim1);
 
-    HAL_TIM_Base_MspInit(&htim8);
-    LL_TIM_CC_EnableChannel(TIM8, LL_TIM_CHANNEL_CH1);
-    LL_TIM_EnableARRPreload(TIM8);
-    LL_TIM_EnableCounter(TIM8);
-
-
     HAL_TIM_Base_MspInit(&htim2);
     LL_TIM_CC_EnableChannel(TIM2, LL_TIM_CHANNEL_CH1);
     LL_TIM_CC_EnableChannel(TIM2, LL_TIM_CHANNEL_CH2);
     LL_TIM_EnableIT_CC1(TIM2);
     LL_TIM_EnableCounter(TIM2);
 
-
-
-//    uart_init();
-//    initRtc6705();
+    setting_init();
+    uart_init();
     initLed();
     msp_init();
-    DEBUG_PRINTF("%s(%d)", __func__, __LINE__);
+#ifndef TARGET_NOVTX
     initVtx();
-    DEBUG_PRINTF("%s(%d)", __func__, __LINE__);
     mspVtx_init();
-    setVtx(5800, 14);
-
-    DEBUG_PRINTF("%s(%d)", __func__, __LINE__);
+    initTemp();
+#endif
 
 #ifdef DEV_MODE
     startCli();
@@ -666,7 +677,6 @@ int main(void)
 #ifdef  DEV_MODE
     uart_poll();
     if (!uart_read_byte(&rxdata)) {
-        DEBUG_PRINTF("rx:%x",rxdata);
         dataCli(rxdata);
     }
     static uint32_t diag_time = 100;
@@ -677,24 +687,28 @@ int main(void)
 
         sprintf(buf,"%s", "---VIDEO---");
         charCanvasWrite(1,0, (uint8_t*)buf, strlen(buf));
-        sprintf(buf,"LINE........%d (%s)", (int)video_line_last, video_format_str[video_format]);
+        sprintf(buf,"LINE........%d (%s)", (int)video_line_last, VIDEO_FORMAT_STR);
         charCanvasWrite(2,1, (uint8_t*)buf, strlen(buf));
-        sprintf(buf,"SYNC-TH.....%dMV (%d-%d)", (pluse_level_high+pluse_level_low)/2, pluse_level_low, pluse_level_high);
+        sprintf(buf,"SYNC-TH.....%04dMV (%d-%d)", (pluse_level_high+pluse_level_low)/2, pluse_level_low, pluse_level_high);
         charCanvasWrite(3,1, (uint8_t*)buf, strlen(buf));
         sprintf(buf,"%s", "---VTX---");
         charCanvasWrite(4,0, (uint8_t*)buf, strlen(buf));
-        sprintf(buf,"FREQ........%dMHZ", getVtxFreq());
+        sprintf(buf,"FREQ........%04dMHZ", getVtxFreq());
         charCanvasWrite(5,1, (uint8_t*)buf, strlen(buf));
-        sprintf(buf,"VPD.........%dMV", getVpd());
+        sprintf(buf,"VPD.........%04dMV", getVpd());
         charCanvasWrite(6,1, (uint8_t*)buf, strlen(buf));
-        sprintf(buf,"VPD-TARGET..%dMV", getVpdTarget());
+        sprintf(buf,"VPD-TARGET..%04dMV", getVpdTarget());
         charCanvasWrite(7,1, (uint8_t*)buf, strlen(buf));
-        sprintf(buf,"VREF........%dMV", getVref());
+        sprintf(buf,"VREF........%04dMV", getVref());
         charCanvasWrite(8,1, (uint8_t*)buf, strlen(buf));
+        sprintf(buf,"TEMP.........%03ld\xe", getTemp());
+        charCanvasWrite(9,1, (uint8_t*)buf, strlen(buf));
         charCanvasDraw();
     }
 #else
+#ifndef TARGET_NOVTX
     mspUpdate();
+#endif
     uart_poll();
     
     int cnt=32;
@@ -708,28 +722,37 @@ int main(void)
 
 #if 1
     static LED_STATE led_state = LED_OFF;
-    static uint32_t next_time = 1000;
-//    static uint32_t state_time = 5;
+    static uint32_t previous_time = 0;
 
     procSysTimer();
     sync_proc();
+#ifndef TARGET_NOVTX
+    procTemp();
     procVtx();
+#endif
 
-    if (next_time < HAL_GetTick()){
-        next_time += 1000;
+    uint32_t now = HAL_GetTick();
+    if (now - previous_time > 1000){
+        previous_time = now;
         if (led_state == LED_OFF){
             led_state = LED_GREEN128;
         }else{
             led_state = LED_OFF;
         }
+        setting_update();
         setLed(led_state);
         DEBUG_PRINTF("led_state=%d",led_state);
 
-        DEBUG_PRINTF("%s : %s(%d)", state_str[state], video_format_str[video_format], video_line_last);
-        DEBUG_PRINTF("pluse_level %dmv(%d-%d)", (pluse_level_high+pluse_level_low)/2, pluse_level_high, pluse_level_low);
+        DEBUG_PRINTF("%s : %s(%d)", state_str[state], VIDEO_FORMAT_STR, video_line_last);
+        DEBUG_PRINTF("pluse_level %dmv(%d-%d)",(pluse_level_high+pluse_level_low)/2, pluse_level_high, pluse_level_low);
+#ifndef TARGET_NOVTX
+        debuglogVtx("main");
+#endif
 //        DEBUG_PRINTF("IC1=%d IC2=%d", uwIC1Value, uwIC2Value);
 
     }
+
+
 #endif
   }
   /* USER CODE END 3 */
@@ -817,7 +840,11 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.DMAContinuousRequests = DISABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-  hadc1.Init.OversamplingMode = DISABLE;
+  hadc1.Init.OversamplingMode = ENABLE;
+  hadc1.Init.Oversampling.Ratio = ADC_OVERSAMPLING_RATIO_256;
+  hadc1.Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_4;
+  hadc1.Init.Oversampling.TriggeredMode = ADC_TRIGGEREDMODE_SINGLE_TRIGGER;
+  hadc1.Init.Oversampling.OversamplingStopReset = ADC_REGOVERSAMPLING_CONTINUED_MODE;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
@@ -833,9 +860,9 @@ static void MX_ADC1_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_4;
+  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR_ADC1;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -898,7 +925,7 @@ static void MX_ADC2_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;        /* 1/60MHz * 640.5 * 256(oversmple) = 2.7ms */
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -1416,87 +1443,6 @@ static void MX_TIM4_Init(void)
 
 }
 
-/**
-  * @brief TIM8 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM8_Init(void)
-{
-
-  /* USER CODE BEGIN TIM8_Init 0 */
-
-  /* USER CODE END TIM8_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
-  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
-
-  /* USER CODE BEGIN TIM8_Init 1 */
-
-  /* USER CODE END TIM8_Init 1 */
-  htim8.Instance = TIM8;
-  htim8.Init.Prescaler = 0;
-  htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim8.Init.Period = 212;
-  htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim8.Init.RepetitionCounter = 0;
-  htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim8, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_PWM_Init(&htim8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim8, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
-  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-  if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
-  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
-  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 0;
-  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
-  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
-  sBreakDeadTimeConfig.BreakFilter = 0;
-  sBreakDeadTimeConfig.BreakAFMode = TIM_BREAK_AFMODE_INPUT;
-  sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
-  sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
-  sBreakDeadTimeConfig.Break2Filter = 0;
-  sBreakDeadTimeConfig.Break2AFMode = TIM_BREAK_AFMODE_INPUT;
-  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
-  if (HAL_TIMEx_ConfigBreakDeadTime(&htim8, &sBreakDeadTimeConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM8_Init 2 */
-
-  /* USER CODE END TIM8_Init 2 */
-  HAL_TIM_MspPostInit(&htim8);
-
-}
 
 /**
   * @brief TIM16 Initialization Function

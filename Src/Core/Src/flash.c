@@ -5,6 +5,7 @@
 #include "flash.h"
 
 
+__attribute__((section (".ccmram_code"), optimize("O0")))
 bool flash_erase(uint32_t addr, uint16_t size)
 {
     DEBUG_PRINTF("erase start");
@@ -28,6 +29,7 @@ bool flash_erase(uint32_t addr, uint16_t size)
 }
 
 
+__attribute__((section (".ccmram_code"), optimize("O0")))
 bool flash_write(uint32_t addr, uint8_t *data, uint16_t size)
 {
     HAL_FLASH_Unlock();

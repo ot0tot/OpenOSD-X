@@ -6,6 +6,7 @@
 #include "char_canvas.h"
 #include "uart_dma.h"
 #include "mspvtx.h"
+#include "setting.h"
 #include "msp.h"
 
 // --- MSP Protocol Defines ---
@@ -14,6 +15,7 @@
 #define MSP_PROTOCOL_VERSION_V2 'X' // Or 'V' for some implementations - check Betaflight source
 #define MSP_DIRECTION_OUT '<' // To FC
 #define MSP_DIRECTION_IN '>'  // From FC
+
 
 // Common MSP Command IDs (ensure these values are correct as per Betaflight source)
 #define MSP_API_VERSION 1
@@ -30,10 +32,19 @@
 // For this example, let's assume they are direct MSP commands for simplicity of the initial structure,
 // but typically DisplayPort OSD commands are encapsulated.
 
-#define MSP_DP_HEARTBEAT 0 // User provided
-#define MSP_DP_CLEAR_SCREEN 2 // User provided
-#define MSP_DP_WRITE_STRING 3 // User provided
-#define MSP_DP_DRAW_SCREEN 4  // User provided
+// MSP Display Port commands
+typedef enum {
+    MSP_DP_HEARTBEAT = 0,       // Release the display after clearing and updating
+    MSP_DP_RELEASE = 1,         // Release the display after clearing and updating
+    MSP_DP_CLEAR_SCREEN = 2,    // Clear the display
+    MSP_DP_WRITE_STRING = 3,    // Write a string at given coordinates
+    MSP_DP_DRAW_SCREEN = 4,     // Trigger a screen draw
+    MSP_DP_OPTIONS = 5,         // Not used by Betaflight. Reserved by Ardupilot and INAV
+    MSP_DP_SYS = 6,             // Display system element displayportSystemElement_e at given coordinates
+    MSP_DP_FONTCHAR_WRITE = 7,  // New OSD chip works over MSP, enables font write over MSP
+    MSP_DP_COUNT,
+} displayportMspCommand_e;
+
 
 #define MSP_BUFFER_SIZE 256 // Maximum MSP message size
 
@@ -289,26 +300,26 @@ bool msp_parse_char(uint8_t c)
                 if (msp_rx_message.version == MSP_V1) {
                     calculated_checksum = msp_calculate_checksum_v1(&msp_rx_message.buffer[3], msp_rx_message.data_size + 2);
                 } else {
-#if 1
-        DEBUG_PRINTTIMESTAMP();
-        DEBUG_PRINTRAW("rx_v2(%04x):", msp_rx_message.command);
-        for (int x=0; x<msp_rx_message.data_size + msp_rx_message.payload_offset; x++){
-            DEBUG_PRINTRAW(" %02x", msp_rx_message.buffer[x]);
-        }
-        DEBUG_PRINTRAW("\n");
-#endif
-
                     calculated_checksum = msp_calculate_checksum_v2(&msp_rx_message.buffer[3], msp_rx_message.data_size + 5);
+#if 0
+                    DEBUG_PRINTTIMESTAMP();
+                    DEBUG_PRINTRAW("rx_v2(%04x):", msp_rx_message.command);
+                    for (int x=0; x<msp_rx_message.data_size + msp_rx_message.payload_offset; x++){
+                        DEBUG_PRINTRAW(" %02x", msp_rx_message.buffer[x]);
+                    }
+                    DEBUG_PRINTRAW("\n");
+#endif
                 }
 
                 if (calculated_checksum == c) {
+
                     msp_process_message();
                     ret = true; // Message processed successfully
                 } else {
                     // Checksum error
                     DEBUG_PRINTF("Checksum error");
 
-#if 1
+#if 0
         DEBUG_PRINTTIMESTAMP();
         DEBUG_PRINTRAW("rx_err(%04x):", msp_rx_message.command);
         for (int x=0; x<msp_rx_message.data_size + msp_rx_message.payload_offset; x++){
@@ -373,22 +384,24 @@ void msp_process_message(void)
         case MSP_DISPLAYPORT:
             switch(msp_rx_message.buffer[msp_rx_message.payload_offset]){
                 case MSP_DP_HEARTBEAT:
+                    //DEBUG_PRINTF("MSP_HEARTBEAT");
                     {
                         if ( msp_set_osd_canvas_recv == false /*&& video_format != VIDEO_UNKNOWN*/ ){
-                            DEBUG_PRINTF("MSP_DP_HEARTBEAT");
+                            DEBUG_PRINTF("MSP_HEARTBEAT");
                             uint8_t data[2] = {COLUMN_SIZE,0};
-                            data[1] = (video_format == VIDEO_PAL) ? ROW_SIZE_PAL : ROW_SIZE_NTSC;
+                            data[1] = (setting()->videoFormat == VIDEO_PAL) ? ROW_SIZE_PAL : ROW_SIZE_NTSC;
                             msp_send_reply(MSP_SET_OSD_CANVAS, data, sizeof(data), msp_rx_message.version);
                         }
                     }
                     break;
 
                 case MSP_DP_CLEAR_SCREEN:
+                    //DEBUG_PRINTF("MSP_CLEAR_SCREEN");
                     charCanvasClear();
                     break;
 
                 case MSP_DP_WRITE_STRING:
-                    //DEBUG_PRINTF("MSP_DP_WRITE_STRING");
+                    //DEBUG_PRINTF("MSP_WRITE_STRING:%c", msp_rx_message.buffer[ msp_rx_message.payload_offset +4 ]);
                     charCanvasWrite(
                         msp_rx_message.buffer[ msp_rx_message.payload_offset +1], 
                         msp_rx_message.buffer[ msp_rx_message.payload_offset +2 ],
@@ -397,7 +410,12 @@ void msp_process_message(void)
                     break;
 
                 case MSP_DP_DRAW_SCREEN:
+                    //DEBUG_PRINTF("MSP_DRAW_SCREEN");
                     charCanvasDraw();
+                    break;
+                case MSP_DP_FONTCHAR_WRITE:
+                    //DEBUG_PRINTF("MSP_FONTCHAR_WRITE");
+                    writeFlashFont(msp_rx_message.buffer[ msp_rx_message.payload_offset +2]<<8 | msp_rx_message.buffer[ msp_rx_message.payload_offset +1], &msp_rx_message.buffer[ msp_rx_message.payload_offset +4]);
                     break;
             }
             break;
@@ -405,6 +423,7 @@ void msp_process_message(void)
             DEBUG_PRINTF("MSP_SET_OSD_CANVAS");
             msp_set_osd_canvas_recv = true;
             break;
+#ifndef TARGET_NOVTX
         case MSP_VTX_CONFIG:
             DEBUG_PRINTF("MSP_VTX_CONFIG");
             mspvtx_VtxConfig( &msp_rx_message.buffer[msp_rx_message.payload_offset] );
@@ -424,12 +443,9 @@ void msp_process_message(void)
         case MSP_VTXTABLE_POWERLEVEL: // Get VTX Power Level table entry
             mspvtx_VtxTablePowerLevel( &msp_rx_message.buffer[msp_rx_message.payload_offset] );
             break;
-
+#endif
         case MSP_REBOOT:
-//            msp_send_reply(MSP_REBOOT, NULL, 0, msp_rx_message.version); // Acknowledge before rebooting
-            // Add a small delay if fc_send_buffer is not guaranteed to complete immediately
-            // for (volatile int i=0; i<10000; i++); // Small delay
-//            system_reboot();
+            rebootDfu();
             break;
 
         // Handle other MSP commands if necessary (e.g., MSP_API_VERSION for compatibility checks)
@@ -501,7 +517,7 @@ void msp_send_reply(uint16_t command, const uint8_t *payload, uint8_t payload_si
         // The range usually starts from the 'flags' byte.
         tx_buffer[tx_index++] = msp_calculate_checksum_v2(&tx_buffer[3], payload_size + 5); // Checksum from flags byte
     }
-#if 0
+#if 1
     DEBUG_PRINTTIMESTAMP();
     DEBUG_PRINTRAW("tx:");
     for (int x=0; x<tx_index; x++){

@@ -44,13 +44,15 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 /* Memories definition */
 MEMORY
 {
-  RAM     (xrw)      : ORIGIN = 0x20000000,  LENGTH = 16K
-  SRAM2   (rw)       : ORIGIN = 0x20004000,  LENGTH = 6K
-  CCMRAM_DATA (rw)   : ORIGIN = 0x20006000,  LENGTH = 4K
-  CCMRAM_CODE(xrw)   : ORIGIN = 0x10000000,  LENGTH = 4K
-  FLASH    (rx)      : ORIGIN = 0x08000000,   LENGTH = 92K
-  FLASH_FONT (r)     : ORIGIN = 0x08017000,   LENGTH = 32K
-  FLASH_SETTING (r)  : ORIGIN = 0x0801F000,   LENGTH = 4K
+  RAM     (xrw)        : ORIGIN = 0x20000000,  LENGTH = 16K
+  SRAM2   (rw)         : ORIGIN = 0x20004000,  LENGTH = 6K
+  CCMRAM_DATA (rw)     : ORIGIN = 0x20006000,  LENGTH = 4K
+  CCMRAM_CODE(xrw)     : ORIGIN = 0x10000000,  LENGTH = 4K
+  /* FLASH_APP_HEADER (r) : ORIGIN = 0x08004000,   LENGTH = 512 */
+  FLASH    (rx)        : ORIGIN = 0x08004200,   LENGTH = 91K
+  FLASH_SETTING (r)    : ORIGIN = 0x0801B000,   LENGTH = 2K
+  FLASH_FONT (r)       : ORIGIN = 0x0801B800,   LENGTH = 16K
+  FLASH_VPDTABLE (r)   : ORIGIN = 0x0801F800,   LENGTH = 2K
 }
 
 /* Sections */
@@ -104,6 +106,14 @@ SECTIONS
     *(.setting)
   } >FLASH_SETTING
 /* Setting */
+
+/* vpdtable */
+  .vpdtable (NOLOAD) :  {
+    . = ALIGN(4);
+    _vpdtable = .;        /* define a global symbols at start */
+    *(.vpdtable)
+  } >FLASH_VPDTABLE
+/* vpdtable */
 
   /* The program code and other data into "FLASH" Rom type memory */
   .text :
